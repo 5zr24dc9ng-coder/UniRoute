@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden !important;
+  position: relative;
+}
+
+body {
+  margin: 0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+input[type="range"] {
+  cursor: pointer;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* SimulationView — layout-critical props via pure CSS (iOS Safari isSM-bug bypass) */
+.sim-outer-wrap {
+  padding: 20px 16px;
+}
+@media (min-width: 1024px) {
+  .sim-outer-wrap { padding: 36px 40px; }
+}
+
+.sim-hero-card {
+  padding: 20px 16px;
+}
+@media (min-width: 1024px) {
+  .sim-hero-card { padding: 30px 34px; }
+}
+
+.sim-total-cost {
+  font-size: 30px;
+}
+@media (min-width: 768px) {
+  .sim-total-cost { font-size: 40px; }
+}
+@media (min-width: 1024px) {
+  .sim-total-cost { font-size: 52px; }
+}
+
+.sim-hero-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@media (min-width: 768px) {
+  .sim-hero-header { flex-direction: row; gap: 0; }
+}
+
+/* SimulationView — main grid responsive (no JS width detection) */
+.sim-main-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  align-items: start;
+}
+@media (min-width: 768px) {
+  .sim-main-grid { grid-template-columns: 280px 1fr; }
+}
+@media (min-width: 1024px) {
+  .sim-main-grid { grid-template-columns: 320px 1fr; }
+}
+
+.sim-risk-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 768px) {
+  .sim-risk-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Sidebar responsive — pure CSS, no JS width detection */
+.sidebar-drawer {
+  transition: transform 0.24s cubic-bezier(.4,0,.2,1), box-shadow 0.24s;
+}
+
+@media (max-width: 1023px) {
+  .sidebar-drawer {
+    transform: translateX(-100%);
+    box-shadow: none;
+  }
+  .sidebar-drawer[data-open="true"] {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(10,15,30,0.5);
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop: always visible, override everything */
+  .sidebar-drawer {
+    transform: translateX(0) !important;
+    box-shadow: none;
+  }
+}
+
+@keyframes urPulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 2px #cce8dc;
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 4px #cce8dc;
+  }
+}
