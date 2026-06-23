@@ -79,7 +79,7 @@ export default function App() {
   const [country, setCountry] = useState<CountryId>("UK");
   const [studyType, setStudyType] = useState<StudyType>("DEGREE");
   const [duration, setDuration] = useState(10);
-  const { fx, setFx, isLive, error } = useLiveFx();
+  const { fx, setFx } = useLiveFx();
   const [cityTier, setCityTier] = useState<CityTierKey>("capital");
   const w = useWindowWidth();
   const isSmall = w < 1024;
@@ -153,8 +153,6 @@ export default function App() {
           fx={fx}
           onMenuClick={() => setSidebarOpen(true)}
           isSmall={isSmall}
-          isLive={isLive}
-          error={error}
           studyType={studyType}
           setStudyType={setStudyType}
         />

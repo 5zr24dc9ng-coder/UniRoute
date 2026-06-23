@@ -5,8 +5,6 @@ interface HeaderProps {
   fx: Fx;
   onMenuClick: () => void;
   isSmall: boolean;
-  isLive: boolean;
-  error: string | null;
   studyType: StudyType;
   setStudyType: (s: StudyType) => void;
 }
@@ -17,7 +15,7 @@ const STUDY_TYPES: { id: StudyType; label: string }[] = [
   { id: "LANGUAGE", label: "語学留学" },
 ];
 
-export function Header({ fx, onMenuClick, isSmall, isLive, error, studyType, setStudyType }: HeaderProps) {
+export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType }: HeaderProps) {
   const allPairs = [
     { label: "GBP/JPY", val: fx.GBP, chg: +0.3 },
     { label: "USD/JPY", val: fx.USD, chg: -0.8 },
@@ -25,11 +23,6 @@ export function Header({ fx, onMenuClick, isSmall, isLive, error, studyType, set
     { label: "CAD/JPY", val: fx.CAD, chg: -0.2 },
   ];
   const pairs = isSmall ? allPairs.slice(0, 2) : allPairs;
-  const today = new Date().toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
   return (
     <div
       style={{
@@ -118,31 +111,6 @@ export function Header({ fx, onMenuClick, isSmall, isLive, error, studyType, set
         ))}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
-        <div
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            background: error ? "#cf4a4a" : isLive ? "#1f9268" : "#a0aec0",
-            boxShadow: isLive && !error ? "0 0 0 2px #cce8dc" : "none",
-            animation: isLive && !error ? "urPulse 2.2s ease-in-out infinite" : "none",
-            flexShrink: 0,
-          }}
-        />
-        {!isSmall && (
-          <span
-            style={{
-              fontFamily: '"IBM Plex Mono", monospace',
-              fontSize: 11,
-              color: error ? "#cf4a4a" : "#8899bb",
-            }}
-            title={error ?? undefined}
-          >
-            {error ? "オフライン" : isLive ? `ライブ · ${today}` : "取得中..."}
-          </span>
-        )}
-      </div>
     </div>
   );
 }
