@@ -103,6 +103,12 @@ export default function App() {
     if (savedStudyType) setStudyType(savedStudyType);
     if (savedDuration) setDuration(parseInt(savedDuration, 10));
     if (savedCityTier) setCityTier(savedCityTier);
+
+    // ?admin=true を踏んだら Analytics 計測を除外
+    if (window.location.search.includes("admin=true")) {
+      localStorage.setItem("ignore_analytics", "true");
+      alert("【設定完了】この端末からのAnalytics計測を除外しました。");
+    }
   }, []);
 
   // 状態の変更を自動保存
@@ -172,8 +178,15 @@ export default function App() {
         </main>
         <Footer isSmall={isSmall} />
       </div>
-      {/* Vercel Analytics の計測タグ */}
-      <Analytics />
+      {/* Vercel Analytics の計測タグ — ignore_analytics が true なら除外 */}
+      <Analytics
+        beforeSend={(event) => {
+          if (typeof window !== "undefined" && localStorage.getItem("ignore_analytics") === "true") {
+            return null;
+          }
+          return event;
+        }}
+      />
     </div>
   );
 }
