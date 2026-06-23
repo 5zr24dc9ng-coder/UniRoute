@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CITY_TIERS, COUNTRY_DATA } from "../../constants/countries";
 import { calcCosts } from "../../utils/calculator";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
+import { WisePasswordModal } from "../WisePasswordModal";
 import type { CityTierKey, CountryId, Fx, StudyType } from "../../types";
 
 const simCardStyle: CSSProperties = {
@@ -158,6 +159,15 @@ export function SimulationView({
   const rate = fx[c.currency];
   const [remitanceMode, setRemitanceMode] = useState<"bank" | "wise">("bank");
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [wiseUnlocked, setWiseUnlocked] = useState(false);
+  const [showWisePasswordModal, setShowWisePasswordModal] = useState(false);
+
+  // 初期化時 localStorage から Wise ロック状態を読み込む
+  useEffect(() => {
+    if (localStorage.getItem("wise_unlocked") === "true") {
+      setWiseUnlocked(true);
+    }
+  }, []);
 
   function nudgeFx(delta: number) {
     setFx((prev) => ({
@@ -429,7 +439,13 @@ export function SimulationView({
                     銀行
                   </button>
                   <button
-                    onClick={() => setRemitanceMode("wise")}
+                    onClick={() => {
+                      if (wiseUnlocked) {
+                        setRemitanceMode("wise");
+                      } else {
+                        setShowWisePasswordModal(true);
+                      }
+                    }}
                     style={{
                       padding: "6px 12px",
                       borderRadius: 4,
@@ -440,31 +456,39 @@ export function SimulationView({
                       fontWeight: 600,
                       cursor: "pointer",
                       transition: "all 0.12s",
+                      opacity: wiseUnlocked ? 1 : 0.6,
                     }}
                   >
-                    Wise
+                    Wise {!wiseUnlocked && "🔒"}
                   </button>
                 </div>
                 <button
-                  onClick={() => setShowDetailModal(true)}
+                  onClick={() => {
+                    if (wiseUnlocked) {
+                      setShowDetailModal(true);
+                    } else {
+                      setShowWisePasswordModal(true);
+                    }
+                  }}
                   style={{
                     fontSize: 10,
-                    color: "#5e6b86",
+                    color: wiseUnlocked ? "#5e6b86" : "#ccc",
                     background: "none",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: wiseUnlocked ? "pointer" : "not-allowed",
                     textDecoration: "none",
                     transition: "color 0.12s",
                     padding: 0,
+                    opacity: wiseUnlocked ? 1 : 0.5,
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "#2f63e6";
+                    if (wiseUnlocked) e.currentTarget.style.color = "#2f63e6";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "#5e6b86";
+                    if (wiseUnlocked) e.currentTarget.style.color = "#5e6b86";
                   }}
                 >
-                  詳細を確認 →
+                  詳細を確認 {!wiseUnlocked && "🔒"} →
                 </button>
               </div>
             </div>
@@ -943,6 +967,17 @@ export function SimulationView({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Wise パスワード保護 Modal */}
+      {showWisePasswordModal && (
+        <WisePasswordModal
+          onUnlock={() => {
+            setWiseUnlocked(true);
+            setShowWisePasswordModal(false);
+          }}
+          onClose={() => setShowWisePasswordModal(false)}
+        />
       )}
     </div>
   );
