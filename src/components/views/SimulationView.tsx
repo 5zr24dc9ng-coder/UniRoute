@@ -4,6 +4,7 @@ import { CITY_TIERS, COUNTRY_DATA } from "../../constants/countries";
 import { calcCosts } from "../../utils/calculator";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
 import type { CityTierKey, CountryId, Fx, StudyType } from "../../types";
+import { RemittanceCostComparison } from "../RemittanceCostComparison";
 
 const simCardStyle: CSSProperties = {
   background: "#fff",
@@ -158,6 +159,7 @@ export function SimulationView({
   const rate = fx[c.currency];
   const [remitanceMode, setRemitanceMode] = useState<"bank" | "wise">("bank");
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showRemittanceWidget, setShowRemittanceWidget] = useState(false);
 
   function nudgeFx(delta: number) {
     setFx((prev) => ({
@@ -195,7 +197,6 @@ export function SimulationView({
   const remittanceAmount = costs.remittanceBase * rate;
   const bankFeeJpy = Math.round(remittanceAmount * currencyBankRate);
   const wiseFeeJpy = Math.round(remittanceAmount * wiseRate);
-  const savingsJpy = bankFeeJpy - wiseFeeJpy;
 
   const finalTotalJpy =
     remitanceMode === "wise" ? costs.totalJPY - wiseFeeJpy : costs.totalJPY + bankFeeJpy;
@@ -653,114 +654,26 @@ export function SimulationView({
               );
             })}
 
-            {/* Remittance cost UI */}
+            {/* Remittance cost anchor link */}
             <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid #f0f4ff" }}>
-              {remitanceMode === "bank" ? (
-                <div
-                  style={{
-                    background: "#f5f5f5",
-                    border: "1px solid #e0e0e0",
-                    borderRadius: 8,
-                    padding: "14px 16px",
-                    display: "flex",
-                    gap: 12,
-                  }}
-                >
-                  <div style={{ fontSize: 14, flexShrink: 0 }}>⚠️</div>
-                  <div>
-                    <div style={{ fontSize: 12, color: "#666", lineHeight: 1.6 }}>
-                      ※一般的な銀行送金の場合、為替スプレッド等により約 <strong>¥{bankFeeJpy.toLocaleString()}</strong> の隠れコストが含まれています。
-                    </div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                      <div
-                        style={{
-                          flex: 1,
-                          height: 24,
-                          background: "#ddd",
-                          borderRadius: 4,
-                          position: "relative",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            background: "#999",
-                            borderRadius: 4,
-                            width: "100%",
-                          }}
-                        />
-                      </div>
-                      <div style={{ fontSize: 11, color: "#999", fontWeight: 600 }}>銀行手数料</div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    background: "#e8f5e9",
-                    border: "1px solid #4caf50",
-                    borderRadius: 8,
-                    padding: "14px 16px",
-                    display: "flex",
-                    gap: 12,
-                  }}
-                >
-                  <div style={{ fontSize: 14, flexShrink: 0 }}>✨</div>
-                  <div>
-                    <div style={{ fontSize: 12, color: "#1b5e20", lineHeight: 1.6, fontWeight: 600 }}>
-                      Wiseの利用により、送金コストを約 <strong>¥{savingsJpy.toLocaleString()}</strong> 節約できます。
-                    </div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                      <div
-                        style={{
-                          flex: 1,
-                          height: 24,
-                          background: "#ddd",
-                          borderRadius: 4,
-                          position: "relative",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            background: "#4caf50",
-                            borderRadius: 4,
-                            width: `${(wiseFeeJpy / bankFeeJpy) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <div style={{ fontSize: 11, color: "#4caf50", fontWeight: 600 }}>Wise手数料</div>
-                    </div>
-                    <a
-                      href="#"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        marginTop: 10,
-                        fontSize: 11,
-                        color: "#4caf50",
-                        textDecoration: "none",
-                        fontWeight: 600,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 9,
-                          background: "#f0f0f0",
-                          color: "#666",
-                          padding: "2px 4px",
-                          borderRadius: 3,
-                          fontWeight: 700,
-                        }}
-                      >
-                        [PR]
-                      </span>
-                      Wiseで送金シミュレーションを行う ↗
-                    </a>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setShowRemittanceWidget(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  fontSize: 12,
+                  color: "#2f63e6",
+                  fontWeight: 600,
+                  textAlign: "left",
+                  lineHeight: 1.5,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+              >
+                銀行とWiseでの送金手数料を比較する ↓
+              </button>
             </div>
           </div>
 
@@ -802,145 +715,161 @@ export function SimulationView({
         </div>
       </div>
 
-      {/* Detail modal */}
-      {showDetailModal && (
+      {/* 送金手数料比較モーダル */}
+      {showRemittanceWidget && (
         <div
           style={{
             position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            inset: 0,
             background: "rgba(20, 29, 51, 0.7)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 1000,
-            padding: "16px",
+            zIndex: 1100,
+            padding: 16,
           }}
-          onClick={() => setShowDetailModal(false)}
+          onClick={() => setShowRemittanceWidget(false)}
         >
           <div
             style={{
-              background: "#fff",
+              background: "#f8faff",
               borderRadius: 16,
-              padding: isSM ? "20px 16px" : "32px 40px",
-              maxWidth: 600,
+              padding: isSM ? "16px 12px" : "28px 24px",
+              maxWidth: 540,
               width: "100%",
-              maxHeight: "80vh",
+              maxHeight: "90vh",
               overflow: "auto",
-              boxShadow: "0 20px 60px rgba(20, 29, 51, 0.3)",
+              boxShadow: "0 20px 60px rgba(20,29,51,.3)",
+              position: "relative",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: "#141d33", margin: 0 }}>
+            <button
+              onClick={() => setShowRemittanceWidget(false)}
+              style={{
+                position: "absolute",
+                top: 14,
+                right: 16,
+                background: "none",
+                border: "none",
+                fontSize: 22,
+                cursor: "pointer",
+                color: "#5e6b86",
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >
+              ×
+            </button>
+            <RemittanceCostComparison hideAnchor />
+          </div>
+        </div>
+      )}
+
+      {/* Detail modal */}
+      {showDetailModal && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+          style={{ background: "rgba(20,29,51,0.7)" }}
+          onClick={() => setShowDetailModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full overflow-auto shadow-2xl"
+            style={{ maxWidth: 600, maxHeight: "88vh" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+              <h3 className="text-lg font-bold" style={{ color: "#141d33" }}>
                 海外送金コスト詳細説明
               </h3>
               <button
                 onClick={() => setShowDetailModal(false)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: 24,
-                  cursor: "pointer",
-                  color: "#5e6b86",
-                  padding: 0,
-                  width: 32,
-                  height: 32,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl leading-none"
               >
                 ×
               </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* Bank explanation */}
-              <div style={{ paddingBottom: 16, borderBottom: "1px solid #e3e9f5" }}>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: "#141d33", marginBottom: 10 }}>
+            {/* Body */}
+            <div className="px-6 py-5 flex flex-col gap-5">
+
+              {/* Section 1: 銀行 */}
+              <div className="pb-5 border-b border-gray-100">
+                <h4 className="text-sm font-bold mb-2" style={{ color: "#141d33" }}>
                   🏦 銀行送金の実態
                 </h4>
-                <p style={{ fontSize: 13, color: "#5e6b86", lineHeight: 1.6, margin: 0, marginBottom: 8 }}>
-                  一般的な銀行送金では、表面上の送金手数料とは別に、<strong>為替スプレッド</strong>という形で以下のコストが隠れています。
+                <p className="text-sm leading-relaxed mb-3" style={{ color: "#5e6b86" }}>
+                  一般的な銀行送金では、表面上の送金手数料とは別に、<strong className="text-gray-700">為替スプレッド</strong>という形で以下のコストが上乗せされている場合があります（※）。
                 </p>
-                <div style={{ background: "#f8faff", padding: 12, borderRadius: 8, marginTop: 8 }}>
-                  <p style={{ fontSize: 12, color: "#141d33", margin: 0, lineHeight: 1.6 }}>
-                    • アメリカ（USD）: 総額の <strong>1.0%</strong>
-                    <br />
-                    • イギリス（GBP）: 総額の <strong>2.5%</strong>
-                    <br />
-                    • オーストラリア（AUD）: 総額の <strong>2.5%</strong>
-                    <br />
-                    • カナダ（CAD）: 総額の <strong>1.8%</strong>
-                  </p>
+                <div className="rounded-lg px-4 py-3" style={{ background: "#f8faff" }}>
+                  <ul className="text-xs space-y-1" style={{ color: "#1c2740" }}>
+                    <li>・ アメリカ（USD）：約 <strong>1.0%〜</strong></li>
+                    <li>・ イギリス（GBP）：約 <strong>2.5%〜</strong></li>
+                    <li>・ オーストラリア（AUD）：約 <strong>2.5%〜</strong></li>
+                    <li>・ カナダ（CAD）：約 <strong>1.8%〜</strong></li>
+                  </ul>
                 </div>
+                <p className="text-xs mt-2 leading-relaxed" style={{ color: "#8899bb" }}>
+                  ※上記は主要都市銀行の一般的な為替スプレッドの目安であり、ご利用の金融機関や送金タイミングにより大きく変動します。
+                </p>
               </div>
 
-              {/* Wise explanation */}
-              <div style={{ paddingBottom: 16, borderBottom: "1px solid #e3e9f5" }}>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: "#141d33", marginBottom: 10 }}>
+              {/* Section 2: Wise */}
+              <div className="pb-5 border-b border-gray-100">
+                <h4 className="text-sm font-bold mb-2" style={{ color: "#141d33" }}>
                   ✨ Wiseの優位性
                 </h4>
-                <p style={{ fontSize: 13, color: "#5e6b86", lineHeight: 1.6, margin: 0, marginBottom: 8 }}>
-                  Wiseは<strong>ミッドマーケットレート</strong>（実際の為替相場）を適用し、為替スプレッドをゼロに削減。
-                  純粋な手数料のみで着金できます。
+                <p className="text-sm leading-relaxed mb-3" style={{ color: "#5e6b86" }}>
+                  Wiseは<strong className="text-gray-700">ミッドマーケットレート</strong>（実際の為替相場）を適用し、為替スプレッドをゼロに削減。純粋な手数料のみで着金できます。
                 </p>
-                <div style={{ background: "#e8f5e9", padding: 12, borderRadius: 8, marginTop: 8 }}>
-                  <p style={{ fontSize: 12, color: "#1b5e20", margin: 0, lineHeight: 1.6, fontWeight: 600 }}>
-                    国に関わらず、送金対象額に対し一律 <strong>0.6%</strong> の手数料のみ。
+                <div className="rounded-lg px-4 py-3" style={{ background: "#e8f5e9" }}>
+                  <p className="text-xs leading-relaxed font-medium" style={{ color: "#1b5e20" }}>
+                    当シミュレーターでは、目安として送金額の約0.6%〜1.0%前後（※）の手数料として算出しています。
                   </p>
                 </div>
+                <p className="text-xs mt-2 leading-relaxed" style={{ color: "#8899bb" }}>
+                  ※実際の手数料は通貨ルートや送金方法によって異なります。
+                </p>
               </div>
 
-              {/* Calculation base */}
+              {/* Section 3: 計算根拠 */}
               <div>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: "#141d33", marginBottom: 10 }}>
+                <h4 className="text-sm font-bold mb-2" style={{ color: "#141d33" }}>
                   📊 誠実な計算根拠
                 </h4>
-                <p style={{ fontSize: 13, color: "#5e6b86", lineHeight: 1.6, margin: 0 }}>
-                  本計算では、以下の費用を<strong>送金対象から正しく除外</strong>しています。
-                  これらは事前の海外送金が不要な費用です。
+                <p className="text-sm leading-relaxed mb-3" style={{ color: "#5e6b86" }}>
+                  本計算では、以下の費用を<strong className="text-gray-700">送金対象から正しく除外</strong>しています。これらは事前の海外送金が不要な費用です。
                 </p>
-                <div style={{ background: "#f8faff", padding: 12, borderRadius: 8, marginTop: 8 }}>
-                  <p style={{ fontSize: 12, color: "#5e6b86", margin: 0, lineHeight: 1.6 }}>
-                    ✓ <strong>生活費（残高証明用）</strong>: ビザ審査のための形式的な証明であり、実際には現地で使用
-                    <br />
-                    ✓ <strong>航空券代</strong>: 事前の海外送金対象ではなく、現地到着時の支払い
-                  </p>
+                <div className="rounded-lg px-4 py-3" style={{ background: "#f8faff" }}>
+                  <ul className="text-xs space-y-2 leading-relaxed" style={{ color: "#5e6b86" }}>
+                    <li>・ <strong className="text-gray-700">生活費（残高証明用）</strong>：ビザ審査のための形式的な証明であり、実際には現地で使用</li>
+                    <li>・ <strong className="text-gray-700">航空券代</strong>：事前の海外送金対象ではなく、現地到着時の支払い</li>
+                  </ul>
                 </div>
-                <p style={{ fontSize: 12, color: "#8899bb", marginTop: 12, marginBottom: 0 }}>
-                  送金対象 = 授業料（学費）+ 住居費（滞在デポジット）
+                <p className="text-xs mt-3 font-semibold" style={{ color: "#2f63e6" }}>
+                  送金対象 ＝ 授業料（学費） ＋ 住居費（滞在デポジット）
                 </p>
               </div>
             </div>
 
-            <button
-              onClick={() => setShowDetailModal(false)}
-              style={{
-                width: "100%",
-                marginTop: 28,
-                padding: "10px 16px",
-                background: "#2f63e6",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "background 0.12s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#1f49b8";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#2f63e6";
-              }}
-            >
-              閉じる
-            </button>
+            {/* Disclaimer + Footer */}
+            <div className="px-6 pb-6 flex flex-col gap-4">
+              <div className="rounded-lg px-4 py-3 border border-gray-100" style={{ background: "#fafafa" }}>
+                <p className="text-xs leading-relaxed" style={{ color: "#a0aec0" }}>
+                  【免責事項】本シミュレーターの計算結果はあくまで概算であり、実際の送金コストや為替レートを保証するものではありません。正確な手数料や最終的な送金額については、必ず送金実行時にWise公式サイトおよび各金融機関にて直接ご確認ください。
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="w-full py-3 rounded-lg text-sm font-semibold text-white transition-colors"
+                style={{ background: "#2f63e6" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#1f49b8")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#2f63e6")}
+              >
+                閉じる
+              </button>
+            </div>
           </div>
         </div>
       )}

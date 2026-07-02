@@ -2,9 +2,10 @@ import { useState } from "react";
 
 interface RemittanceCostComparisonProps {
   affiliateLink?: string;
+  hideAnchor?: boolean;
 }
 
-export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/click/camref:1101l5Nsvb" }: RemittanceCostComparisonProps) {
+export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/click/camref:1101l5Nsvb", hideAnchor = false }: RemittanceCostComparisonProps) {
   const [amount, setAmount] = useState(100000);
 
   // 計算ロジック
@@ -22,25 +23,27 @@ export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/
   return (
     <>
       {/* アンカーリンク（ページ上部用） */}
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <button
-          onClick={handleScroll}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 13,
-            color: "#2f63e6",
-            fontWeight: 600,
-            padding: 0,
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
-        >
-          約11万円の隠れコスト（銀行手数料）を削る方法を見る ↓
-        </button>
-      </div>
+      {!hideAnchor && (
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <button
+            onClick={handleScroll}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#2f63e6",
+              fontWeight: 600,
+              padding: 0,
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+            onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+          >
+            約11万円の隠れコスト（銀行手数料）を削る方法を見る ↓
+          </button>
+        </div>
+      )}
 
       {/* メインウィジェット */}
       <div
@@ -135,8 +138,21 @@ export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/
               border: "1px solid #c8e6c9",
             }}
           >
-            <div style={{ fontSize: 11, color: "#1b5e20", fontWeight: 600, marginBottom: 8 }}>
-              Wise
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: "#1b5e20", fontWeight: 600 }}>Wise</span>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: "#4a9e6a",
+                  background: "#d4edda",
+                  padding: "1px 4px",
+                  borderRadius: 3,
+                  letterSpacing: "0.03em",
+                }}
+              >
+                PR
+              </span>
             </div>
             <div
               style={{
