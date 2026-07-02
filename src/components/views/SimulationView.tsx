@@ -140,6 +140,7 @@ interface SimulationViewProps {
   setFx: React.Dispatch<React.SetStateAction<Fx>>;
   cityTier: CityTierKey;
   setCityTier: (t: CityTierKey) => void;
+  lastUpdated?: Date | null;
 }
 
 export function SimulationView({
@@ -152,6 +153,7 @@ export function SimulationView({
   setFx,
   cityTier,
   setCityTier,
+  lastUpdated,
 }: SimulationViewProps) {
   const isSM = useWindowWidth() < 1024;
   const c = COUNTRY_DATA[country];
@@ -205,9 +207,14 @@ export function SimulationView({
     <div className="sim-outer-wrap" style={{ maxWidth: 1160, margin: "0 auto" }}>
       <div style={{ marginBottom: 26 }}>
         <span style={{ ...simLabelStyle, display: "block", marginBottom: 6 }}>詳細シミュレーション</span>
-        <h2 style={{ fontSize: 26, fontWeight: 700, color: "#141d33", letterSpacing: "-0.02em", margin: 0 }}>
+        <h2 style={{ fontSize: 26, fontWeight: 700, color: "#141d33", letterSpacing: "-0.02em", margin: "0 0 8px" }}>
           総費用試算
         </h2>
+        <div style={{ fontSize: 11, color: "#8899bb", fontFamily: '"IBM Plex Mono", monospace' }}>
+          {lastUpdated
+            ? `為替レート基準日時：${lastUpdated.getFullYear()}年${lastUpdated.getMonth() + 1}月${lastUpdated.getDate()}日（24時間ごとに更新）`
+            : "為替レート：デフォルト値を使用中（APIキー未設定）"}
+        </div>
       </div>
 
       {/* Country tabs */}

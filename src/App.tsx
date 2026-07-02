@@ -79,7 +79,7 @@ export default function App() {
   const [country, setCountry] = useState<CountryId>("UK");
   const [studyType, setStudyType] = useState<StudyType>("DEGREE");
   const [duration, setDuration] = useState(10);
-  const { fx, setFx } = useLiveFx();
+  const { fx, setFx, lastUpdated } = useLiveFx();
   const [cityTier, setCityTier] = useState<CityTierKey>("capital");
   const w = useWindowWidth();
   const isSmall = w < 1024;
@@ -168,6 +168,7 @@ export default function App() {
               setFx={setFx}
               cityTier={cityTier}
               setCityTier={setCityTier}
+              lastUpdated={lastUpdated}
             />
           )}
           {view === "matrix" && <ComparisonView fx={fx} studyType={studyType} />}
