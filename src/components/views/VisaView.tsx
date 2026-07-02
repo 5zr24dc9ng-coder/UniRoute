@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
 import { useVisaCostCalculator } from "../../hooks/useVisaCostCalculator";
 import { useProofOfFundsCalculator } from "../../hooks/useProofOfFundsCalculator";
+import { UK_VISA_CONSTANTS } from "../../constants/visa/uk";
 import type { VisaInput } from "../../hooks/useVisaCostCalculator";
-import type { StudyType, DependentsInput } from "../../hooks/useProofOfFundsCalculator";
+import type { StudyType, DependentsInput, UkCity } from "../../hooks/useProofOfFundsCalculator";
 import type { CountryCodeVisa } from "../../types";
 
 const COUNTRIES: { id: CountryCodeVisa; label: string; flag: string }[] = [
@@ -65,6 +66,7 @@ export function VisaView() {
   const [durationMonths, setDurationMonths] = useState(12);
   const [spouse, setSpouse] = useState<0 | 1>(0);
   const [children, setChildren] = useState(0);
+  const [ukCity, setUkCity] = useState<UkCity>("LONDON");
 
   // オブジェクト参照を安定させて不要な再計算を防ぐ
   const visaInput = useMemo<VisaInput>(() => {
@@ -82,7 +84,8 @@ export function VisaView() {
   );
 
   const visaCost = useVisaCostCalculator(visaInput);
-  const proofOfFunds = useProofOfFundsCalculator(country, studyType, durationMonths, dependents);
+  const proofOfFunds = useProofOfFundsCalculator(country, studyType, durationMonths, dependents, ukCity);
+  const proofMonths = Math.min(durationMonths, 9);
 
   const pofSym = DOC_CURRENCY_SYMBOL[proofOfFunds.docCurrency] ?? "";
 
@@ -171,6 +174,23 @@ export function VisaView() {
             <span>24ヶ月</span>
           </div>
         </div>
+
+        {/* 都市選択（UK: ロンドン内/外で資金証明の生活費要件が変わる） */}
+        {country === "UK" && (
+          <div>
+            <p style={{ fontSize: 11, color: "#8899bb", letterSpacing: "0.06em", margin: "0 0 8px" }}>
+              滞在都市
+            </p>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <ToggleBtn active={ukCity === "LONDON"} onClick={() => setUkCity("LONDON")} color="#1f9268">
+                ロンドン市内
+              </ToggleBtn>
+              <ToggleBtn active={ukCity === "OUTSIDE_LONDON"} onClick={() => setUkCity("OUTSIDE_LONDON")} color="#1f9268">
+                ロンドン以外
+              </ToggleBtn>
+            </div>
+          </div>
+        )}
 
         {/* 同伴家族 */}
         <div>
@@ -434,8 +454,18 @@ export function VisaView() {
                     {country === "UK" && (
                       <>
                         <li style={{ fontSize: 12, color: "#5e6b86" }}>
-                          ロンドン内生活費 £1,334/月 × {durationMonths}ヶ月
+                          {ukCity === "LONDON" ? "ロンドン市内" : "ロンドン以外"}生活費 £
+                          {(ukCity === "LONDON"
+                            ? UK_VISA_CONSTANTS.PROOF_OF_FUNDS.LIVING_COST_LONDON_PER_MONTH
+                            : UK_VISA_CONSTANTS.PROOF_OF_FUNDS.LIVING_COST_OUTSIDE_LONDON_PER_MONTH
+                          ).toLocaleString()}
+                          /月 × 最大{proofMonths}ヶ月
                         </li>
+                        {durationMonths > 9 && (
+                          <li style={{ fontSize: 12, color: "#8899bb" }}>
+                            ※ 留学期間{durationMonths}ヶ月のうち、資金証明は最大9ヶ月分で計算（28日ルール）
+                          </li>
+                        )}
                       </>
                     )}
                   </ul>

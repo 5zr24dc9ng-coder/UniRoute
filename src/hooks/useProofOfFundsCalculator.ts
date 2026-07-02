@@ -8,6 +8,9 @@ import type { CountryCodeVisa, DocCurrency } from "../types";
 
 export type StudyType = "DEGREE" | "EXCHANGE" | "LANGUAGE";
 
+// UK: 都市によって資金証明の生活費要件が変わる国のみが対象
+export type UkCity = "LONDON" | "OUTSIDE_LONDON";
+
 export interface DependentsInput {
   spouse: 0 | 1;
   children: number;
@@ -32,7 +35,8 @@ export function useProofOfFundsCalculator(
   countryCode: CountryCodeVisa,
   studyType: StudyType,
   durationMonths: number,
-  dependents: DependentsInput
+  dependents: DependentsInput,
+  ukCity: UkCity = "LONDON"
 ): ProofOfFundsResult {
   const { fx, isLive, error } = useLiveFx();
   const { spouse, children } = dependents;
@@ -76,14 +80,18 @@ export function useProofOfFundsCalculator(
         break;
       }
       case "UK": {
-        // ロンドン内の生活費要件（月額×期間）
-        const monthlyLiving = UK_VISA_CONSTANTS.PROOF_OF_FUNDS.LIVING_COST_LONDON_PER_MONTH;
-        requiredFundsInDocCurrency = monthlyLiving * durationMonths;
+        // 都市選択に基づく月額生活費要件 × 最大9ヶ月ルール
+        const monthlyLiving =
+          ukCity === "LONDON"
+            ? UK_VISA_CONSTANTS.PROOF_OF_FUNDS.LIVING_COST_LONDON_PER_MONTH
+            : UK_VISA_CONSTANTS.PROOF_OF_FUNDS.LIVING_COST_OUTSIDE_LONDON_PER_MONTH;
+        const proofMonths = Math.min(durationMonths, 9);
+        requiredFundsInDocCurrency = monthlyLiving * proofMonths;
         break;
       }
     }
 
     const requiredFundsJpy = Math.round(requiredFundsInDocCurrency * fx[docCurrency]);
     return { requiredFundsInDocCurrency, requiredFundsJpy, docCurrency, isLive, error };
-  }, [countryCode, studyType, durationMonths, spouse, children, fx, isLive, error]);
+  }, [countryCode, studyType, durationMonths, spouse, children, fx, isLive, error, ukCity]);
 }

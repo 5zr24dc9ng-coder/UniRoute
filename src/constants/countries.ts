@@ -7,8 +7,8 @@ export const COUNTRY_DATA: Record<CountryId, Country> = {
   UK: {
     id: "UK", name: "イギリス", short: "UK", currency: "GBP", symbol: "£", flag: "🇬🇧",
     accent: "#2f63e6",
-    tuitionPerYear: 14500, rentPerMonth: 1150, livingPerMonth: 800, proofOfFunds: 11385,
-    proofRule: "28日ルール — ビザ申請日の28日以上前までに、28日連続で残高が £11,385 を下回ってはならない。一度でも下回るとカウントがリセットされる。",
+    tuitionPerYear: 14500, rentPerMonth: 1150, livingPerMonth: 800, proofOfFunds: 13761,
+    proofRule: "28日ルール — ビザ申請日の28日以上前までに、28日連続で必要生活費（ロンドン £1,529/月・ロンドン以外 £1,171/月 × 最大9ヶ月）の残高を維持する必要がある。一度でも下回るとカウントがリセットされる。",
     visaDifficulty: 2, visaLabel: "中",
     approvalRate: 89, processingDays: 15,
     fxExposure: "高", fxLevel: 2,
@@ -17,8 +17,8 @@ export const COUNTRY_DATA: Record<CountryId, Country> = {
   US: {
     id: "US", name: "アメリカ", short: "USA", currency: "USD", symbol: "$", flag: "🇺🇸",
     accent: "#cf4a4a",
-    tuitionPerYear: 22000, rentPerMonth: 1500, livingPerMonth: 1000, proofOfFunds: 18000,
-    proofRule: "I-20 財政証明 — DS-160 提出時に1学年分の全額資金を証明する必要がある。",
+    tuitionPerYear: 22000, rentPerMonth: 1500, livingPerMonth: 1000, proofOfFunds: 33600,
+    proofRule: "I-20 財政証明 — DS-160 提出時に1学年分の全額資金を証明する必要がある。都市圏生活費 US$2,800/月 × 12ヶ月が目安。",
     visaDifficulty: 3, visaLabel: "高",
     approvalRate: 82, processingDays: 30,
     fxExposure: "高", fxLevel: 2,
@@ -27,7 +27,7 @@ export const COUNTRY_DATA: Record<CountryId, Country> = {
   AU: {
     id: "AU", name: "オーストラリア", short: "AUS", currency: "AUD", symbol: "A$", flag: "🇦🇺",
     accent: "#c2792a",
-    tuitionPerYear: 18000, rentPerMonth: 1400, livingPerMonth: 900, proofOfFunds: 24505,
+    tuitionPerYear: 18000, rentPerMonth: 1400, livingPerMonth: 900, proofOfFunds: 29710,
     proofRule: "2026年学生ビザ財政要件 — 申請時に A$29,710 が引き出し可能な状態で口座にある必要がある（凍結不可）。",
     visaDifficulty: 2, visaLabel: "中",
     approvalRate: 85, processingDays: 18,
@@ -37,8 +37,8 @@ export const COUNTRY_DATA: Record<CountryId, Country> = {
   CA: {
     id: "CA", name: "カナダ", short: "CAN", currency: "CAD", symbol: "CA$", flag: "🇨🇦",
     accent: "#1f9268",
-    tuitionPerYear: 16000, rentPerMonth: 1250, livingPerMonth: 850, proofOfFunds: 20635,
-    proofRule: "就学許可 2026 — CAD 20,635 が必要。比較対象4カ国の中で最低閾値。",
+    tuitionPerYear: 16000, rentPerMonth: 1250, livingPerMonth: 850, proofOfFunds: 22895,
+    proofRule: "就学許可 2026 — 連邦規定により単身で CAD 22,895 の生活資金証明が必要（学費とは別）。",
     visaDifficulty: 1, visaLabel: "低",
     approvalRate: 91, processingDays: 10,
     fxExposure: "中", fxLevel: 1,
