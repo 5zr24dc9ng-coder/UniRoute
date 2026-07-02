@@ -220,6 +220,41 @@ export function TaskView({ country: defaultCountry, studyType }: TaskViewProps) 
               ))}
             </div>
           ))}
+
+          {/* Terminal node — 出国でタイムラインを締める */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 28 }}>
+            {/* Goal dot on the line */}
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "#1f9268",
+                border: "3px solid #f8faff",
+                flexShrink: 0,
+                position: "relative",
+                zIndex: 1,
+              }}
+            />
+            {/* Goal badge */}
+            <span
+              style={{
+                background: "#1f9268",
+                color: "#fff",
+                borderRadius: 6,
+                padding: "5px 14px",
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              🛫 出国
+            </span>
+          </div>
         </div>
       )}
     </div>
