@@ -6,11 +6,14 @@ interface RemittanceCostComparisonProps {
 }
 
 export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/click/camref:1101l5Nsvb", hideAnchor = false }: RemittanceCostComparisonProps) {
-  const [amount, setAmount] = useState(100000);
+  const [rawAmount, setRawAmount] = useState("100000");
 
-  // 計算ロジック
-  const bankCost = Math.round(amount * 0.0035 + 2500);
-  const wiseCost = Math.round(amount * 0.0087 + 50);
+  const amount = parseInt(rawAmount, 10);
+  const hasValue = !isNaN(amount) && amount > 0;
+
+  // 計算ロジック（有効値のみ）
+  const bankCost = hasValue ? Math.round(amount * 0.035 + 2500) : 0;
+  const wiseCost = hasValue ? Math.round(amount * 0.0087 + 50) : 0;
   const savings = bankCost - wiseCost;
 
   const handleScroll = () => {
@@ -85,8 +88,8 @@ export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/
           </label>
           <input
             type="number"
-            value={amount}
-            onChange={(e) => setAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+            value={rawAmount}
+            onChange={(e) => setRawAmount(e.target.value)}
             style={{
               width: "100%",
               padding: "10px 12px",
@@ -122,7 +125,7 @@ export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/
                 fontFamily: '"IBM Plex Mono", monospace',
               }}
             >
-              ¥{bankCost.toLocaleString()}
+              {hasValue ? `¥${bankCost.toLocaleString()}` : "—"}
             </div>
             <div style={{ fontSize: 10, color: "#8899bb", marginTop: 6 }}>
               +3.5% + ¥2,500
@@ -162,7 +165,7 @@ export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/
                 fontFamily: '"IBM Plex Mono", monospace',
               }}
             >
-              ¥{wiseCost.toLocaleString()}
+              {hasValue ? `¥${wiseCost.toLocaleString()}` : "—"}
             </div>
             <div style={{ fontSize: 10, color: "#2d7a4a", marginTop: 6 }}>
               +0.87% + ¥50
@@ -194,10 +197,10 @@ export function RemittanceCostComparison({ affiliateLink = "https://wise.prf.hn/
                 letterSpacing: "-0.5px",
               }}
             >
-              ¥{savings.toLocaleString()}
+              {hasValue ? `¥${savings.toLocaleString()}` : "—"}
             </div>
             <div style={{ fontSize: 10, color: "#2d7a4a", marginTop: 4 }}>
-              {((savings / bankCost) * 100).toFixed(0)}% のコスト削減
+              {hasValue ? `${((savings / bankCost) * 100).toFixed(0)}% のコスト削減` : "金額を入力してください"}
             </div>
           </div>
 
