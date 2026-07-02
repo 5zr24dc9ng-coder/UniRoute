@@ -3,7 +3,6 @@ import { DEFAULT_FX } from "../constants/countries";
 import type { Fx } from "../types";
 
 const CACHE_KEY = "uniroute_fx_v1";
-const API_KEY = import.meta.env.VITE_EXCHANGE_RATE_API_KEY as string | undefined;
 
 interface FxCache {
   fx: Fx;
@@ -65,20 +64,14 @@ export function useLiveFx(): UseLiveFxResult {
 
     async function fetchIfStale(): Promise<void> {
       if (readCache()) return;
-      if (!API_KEY) {
-        setError("VITE_EXCHANGE_RATE_API_KEY が未設定です");
-        return;
-      }
 
       // 実行中のフェッチをキャンセルして新しいリクエストを発行
       currentController?.abort();
       currentController = new AbortController();
 
       try {
-        const res = await fetch(
-          `https://v6.exchangerate-api.com/v6/${API_KEY}/latest/JPY`,
-          { signal: currentController.signal }
-        );
+        // APIキーはサーバー側(/api/fx)でのみ保持し、クライアントには一切露出させない
+        const res = await fetch("/api/fx", { signal: currentController.signal });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
