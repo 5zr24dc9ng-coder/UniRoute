@@ -252,7 +252,7 @@ export function TaskView({ country: defaultCountry, studyType }: TaskViewProps) 
                 gap: 6,
               }}
             >
-              🛫 出国
+              出国
             </span>
           </div>
         </div>
