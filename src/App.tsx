@@ -81,6 +81,7 @@ export default function App() {
   const [duration, setDuration] = useState(10);
   const { fx, setFx, lastUpdated } = useLiveFx();
   const [cityTier, setCityTier] = useState<CityTierKey>("capital");
+  const [isPremium, setIsPremium] = useState(false);
   const w = useWindowWidth();
   const isSmall = w < 1024;
 
@@ -103,6 +104,9 @@ export default function App() {
     if (savedStudyType) setStudyType(savedStudyType);
     if (savedDuration) setDuration(parseInt(savedDuration, 10));
     if (savedCityTier) setCityTier(savedCityTier);
+
+    // プレミアム状態を復元（後でStripe連携に置き換え）
+    if (localStorage.getItem("uniroute_premium") === "true") setIsPremium(true);
 
     // ?admin=true を踏んだら Analytics 計測を除外
     if (window.location.search.includes("admin=true")) {
@@ -172,7 +176,7 @@ export default function App() {
             />
           )}
           {view === "matrix" && <ComparisonView fx={fx} studyType={studyType} />}
-          {view === "tasks" && <TaskView country={country} studyType={studyType} />}
+          {view === "tasks" && <TaskView country={country} studyType={studyType} isPremium={isPremium} onUpgrade={() => { localStorage.setItem("uniroute_premium", "true"); setIsPremium(true); }} />}
           {view === "visa" && <VisaView />}
         </main>
         <Footer isSmall={isSmall} />
