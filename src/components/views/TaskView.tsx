@@ -5,19 +5,10 @@ import { useWindowWidth } from "../../hooks/useWindowWidth";
 import type { CountryId, StudyType } from "../../types";
 
 // ─── 型定義 ───────────────────────────────────────────────────────────────────
-interface Scenario {
-  id: string;
-  name: string;
-  country: CountryId;
-  studyType: StudyType;
-  departureDate: string;
-}
-
 interface TaskViewProps {
   country: CountryId;
   studyType: StudyType;
   isPremium: boolean;
-  onUpgrade: () => void;
 }
 
 // ─── ユーティリティ ─────────────────────────────────────────────────────────
@@ -160,53 +151,30 @@ function TaskCard({ task, isExpanded, isCompleted, onToggleExpand, onToggleCompl
 }
 
 // ─── プレミアムロックバナー ───────────────────────────────────────────────────
-function PremiumLockBanner({ onUpgrade }: { onUpgrade: () => void }) {
+function PremiumLockBanner() {
   return (
     <div
       style={{
         border: "1.5px dashed #a5b4fc",
         borderRadius: 12,
-        padding: "16px 20px",
+        padding: "14px 18px",
         background: "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-        flexWrap: "wrap",
+        gap: 10,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 18 }}>🔒</span>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#4338ca" }}>プレミアム機能</div>
-          <div style={{ fontSize: 12, color: "#6366f1", marginTop: 2 }}>出国日カウントダウン・シナリオ保存を解放</div>
-        </div>
+      <span style={{ fontSize: 16 }}>🔒</span>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#4338ca" }}>プレミアム機能</div>
+        <div style={{ fontSize: 12, color: "#6366f1", marginTop: 2 }}>出国日カウントダウンはプレミアムプランで利用できます</div>
       </div>
-      <button
-        onClick={onUpgrade}
-        style={{
-          padding: "8px 18px",
-          borderRadius: 8,
-          border: "none",
-          background: "#4f46e5",
-          color: "#fff",
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: "pointer",
-          flexShrink: 0,
-          transition: "background 0.15s",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "#3730a3")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "#4f46e5")}
-      >
-        プレミアムを解放
-      </button>
     </div>
   );
 }
 
 // ─── メインコンポーネント ─────────────────────────────────────────────────────
-export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgrade }: TaskViewProps) {
+export function TaskView({ country: defaultCountry, studyType, isPremium }: TaskViewProps) {
   const isSM = useWindowWidth() < 1024;
   const [selectedCountry, setSelectedCountry] = useState<CountryId>(defaultCountry);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -226,20 +194,6 @@ export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgr
     localStorage.getItem("uniroute_departure_date") ?? ""
   );
 
-  // シナリオ (premium)
-  const [scenarios, setScenarios] = useState<Scenario[]>(() => {
-    try {
-      const raw = localStorage.getItem("uniroute_scenarios");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(
-    () => localStorage.getItem("uniroute_active_scenario_id")
-  );
-  const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const [scenarioName, setScenarioName] = useState("");
 
   // persistences
   useEffect(() => {
@@ -250,41 +204,6 @@ export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgr
     if (departureDate) localStorage.setItem("uniroute_departure_date", departureDate);
   }, [departureDate]);
 
-  useEffect(() => {
-    localStorage.setItem("uniroute_scenarios", JSON.stringify(scenarios));
-  }, [scenarios]);
-
-  useEffect(() => {
-    if (activeScenarioId) localStorage.setItem("uniroute_active_scenario_id", activeScenarioId);
-  }, [activeScenarioId]);
-
-  // シナリオを切り替えたら表示を更新
-  function loadScenario(s: Scenario) {
-    setSelectedCountry(s.country);
-    if (s.departureDate) setDepartureDate(s.departureDate);
-    setActiveScenarioId(s.id);
-  }
-
-  function saveScenario() {
-    if (!scenarioName.trim()) return;
-    const newS: Scenario = {
-      id: Date.now().toString(),
-      name: scenarioName.trim(),
-      country: selectedCountry,
-      studyType,
-      departureDate,
-    };
-    const updated = [...scenarios, newS];
-    setScenarios(updated);
-    setActiveScenarioId(newS.id);
-    setScenarioName("");
-    setSaveModalOpen(false);
-  }
-
-  function deleteScenario(id: string) {
-    setScenarios((prev) => prev.filter((s) => s.id !== id));
-    if (activeScenarioId === id) setActiveScenarioId(null);
-  }
 
   const countryName = COUNTRY_DATA[selectedCountry].name;
   const studyTypeLabel = { DEGREE: "正規留学", EXCHANGE: "交換留学", LANGUAGE: "語学留学" }[studyType];
@@ -393,7 +312,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgr
       {/* ─── プレミアム機能エリア ───────────────────────────────────── */}
       {!isPremium ? (
         <div style={{ marginBottom: 28 }}>
-          <PremiumLockBanner onUpgrade={onUpgrade} />
+          <PremiumLockBanner />
         </div>
       ) : (
         <div style={{ marginBottom: 28, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -434,150 +353,9 @@ export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgr
               </span>
             )}
           </div>
-
-          {/* シナリオ保存 */}
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid #e3e9f5",
-              borderRadius: 12,
-              padding: "14px 20px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: scenarios.length > 0 ? 12 : 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740" }}>📁 シナリオ</span>
-              <button
-                onClick={() => setSaveModalOpen(true)}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 7,
-                  border: "1.5px solid #2f63e6",
-                  background: "transparent",
-                  color: "#2f63e6",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                + 現在の設定を保存
-              </button>
-            </div>
-
-            {scenarios.length > 0 && (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {scenarios.map((s) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "5px 12px",
-                      borderRadius: 20,
-                      border: `1.5px solid ${activeScenarioId === s.id ? "#2f63e6" : "#e3e9f5"}`,
-                      background: activeScenarioId === s.id ? "#eef4ff" : "#f8faff",
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
-                    onClick={() => loadScenario(s)}
-                  >
-                    <span style={{ fontSize: 12, fontWeight: 600, color: activeScenarioId === s.id ? "#2f63e6" : "#5e6b86" }}>
-                      {s.name}
-                    </span>
-                    <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                      {s.country} · {{ DEGREE: "正規", EXCHANGE: "交換", LANGUAGE: "語学" }[s.studyType]}
-                    </span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteScenario(s.id); }}
-                      style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8", fontSize: 14, padding: 0, lineHeight: 1 }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {scenarios.length === 0 && (
-              <p style={{ fontSize: 12, color: "#94a3b8", margin: "8px 0 0" }}>
-                国・出国日の組み合わせをシナリオとして保存できます
-              </p>
-            )}
-          </div>
         </div>
       )}
 
-      {/* ─── 保存モーダル ─────────────────────────────────────────── */}
-      {saveModalOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(20,29,51,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-          }}
-          onClick={() => setSaveModalOpen(false)}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 14,
-              padding: 28,
-              width: 320,
-              boxShadow: "0 20px 60px rgba(20,29,51,.3)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#141d33", margin: "0 0 16px" }}>シナリオを保存</h3>
-            <p style={{ fontSize: 12, color: "#5e6b86", margin: "0 0 12px" }}>
-              {selectedCountry} · {studyTypeLabel}{departureDate ? ` · 出国 ${new Date(departureDate).toLocaleDateString("ja-JP")}` : ""}
-            </p>
-            <input
-              type="text"
-              placeholder="例：ロンドン正規2年"
-              value={scenarioName}
-              onChange={(e) => setScenarioName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && saveScenario()}
-              autoFocus
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 8,
-                border: "1.5px solid #c8d9fd",
-                fontSize: 14,
-                color: "#1c2740",
-                outline: "none",
-                boxSizing: "border-box",
-                fontFamily: "inherit",
-                marginBottom: 14,
-              }}
-            />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setSaveModalOpen(false)}
-                style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1.5px solid #e3e9f5", background: "#f8faff", fontSize: 13, cursor: "pointer", color: "#5e6b86" }}
-              >
-                キャンセル
-              </button>
-              <button
-                onClick={saveScenario}
-                disabled={!scenarioName.trim()}
-                style={{
-                  flex: 1, padding: "10px", borderRadius: 8, border: "none",
-                  background: scenarioName.trim() ? "#2f63e6" : "#e3e9f5",
-                  color: scenarioName.trim() ? "#fff" : "#94a3b8",
-                  fontSize: 13, fontWeight: 600, cursor: scenarioName.trim() ? "pointer" : "not-allowed",
-                }}
-              >
-                保存
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ─── タイムライン ─────────────────────────────────────────── */}
       {masterTasks.length === 0 ? (

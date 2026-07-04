@@ -108,10 +108,12 @@ export default function App() {
     // プレミアム状態を復元（後でStripe連携に置き換え）
     if (localStorage.getItem("uniroute_premium") === "true") setIsPremium(true);
 
-    // ?admin=true を踏んだら Analytics 計測を除外
+    // ?admin=true を踏んだら Analytics 計測除外 + プレミアム解放
     if (window.location.search.includes("admin=true")) {
       localStorage.setItem("ignore_analytics", "true");
-      alert("【設定完了】この端末からのAnalytics計測を除外しました。");
+      localStorage.setItem("uniroute_premium", "true");
+      setIsPremium(true);
+      alert("【設定完了】Analytics除外 + プレミアム機能を解放しました。");
     }
   }, []);
 
@@ -173,10 +175,11 @@ export default function App() {
               cityTier={cityTier}
               setCityTier={setCityTier}
               lastUpdated={lastUpdated}
+              isPremium={isPremium}
             />
           )}
           {view === "matrix" && <ComparisonView fx={fx} studyType={studyType} />}
-          {view === "tasks" && <TaskView country={country} studyType={studyType} isPremium={isPremium} onUpgrade={() => { localStorage.setItem("uniroute_premium", "true"); setIsPremium(true); }} />}
+          {view === "tasks" && <TaskView country={country} studyType={studyType} isPremium={isPremium} />}
           {view === "visa" && <VisaView />}
         </main>
         <Footer isSmall={isSmall} />

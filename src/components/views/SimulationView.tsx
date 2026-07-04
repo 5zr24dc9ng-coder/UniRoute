@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CITY_TIERS, COUNTRY_DATA } from "../../constants/countries";
 import { calcCosts } from "../../utils/calculator";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
@@ -130,6 +130,14 @@ function RiskCard({ label, level, value }: { label: string; level: number; value
   );
 }
 
+interface SimScenario {
+  id: string;
+  name: string;
+  country: CountryId;
+  duration: number;
+  cityTier: CityTierKey;
+}
+
 interface SimulationViewProps {
   country: CountryId;
   setCountry: (c: CountryId) => void;
@@ -141,6 +149,7 @@ interface SimulationViewProps {
   cityTier: CityTierKey;
   setCityTier: (t: CityTierKey) => void;
   lastUpdated?: Date | null;
+  isPremium: boolean;
 }
 
 export function SimulationView({
@@ -154,6 +163,7 @@ export function SimulationView({
   cityTier,
   setCityTier,
   lastUpdated,
+  isPremium,
 }: SimulationViewProps) {
   const isSM = useWindowWidth() < 1024;
   const c = COUNTRY_DATA[country];
@@ -162,6 +172,40 @@ export function SimulationView({
   const [remitanceMode, setRemitanceMode] = useState<"bank" | "wise">("bank");
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRemittanceWidget, setShowRemittanceWidget] = useState(false);
+
+  // ─── シナリオ (premium) ──────────────────────────────────────────────────
+  const [scenarios, setScenarios] = useState<SimScenario[]>(() => {
+    try { return JSON.parse(localStorage.getItem("uniroute_sim_scenarios") ?? "[]"); }
+    catch { return []; }
+  });
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [scenarioName, setScenarioName] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("uniroute_sim_scenarios", JSON.stringify(scenarios));
+  }, [scenarios]);
+
+  function saveScenario() {
+    if (!scenarioName.trim()) return;
+    const s: SimScenario = { id: Date.now().toString(), name: scenarioName.trim(), country, duration, cityTier };
+    setScenarios((prev) => [...prev, s]);
+    setActiveScenarioId(s.id);
+    setScenarioName("");
+    setSaveModalOpen(false);
+  }
+
+  function loadScenario(s: SimScenario) {
+    setCountry(s.country);
+    setDuration(s.duration);
+    setCityTier(s.cityTier);
+    setActiveScenarioId(s.id);
+  }
+
+  function deleteScenario(id: string) {
+    setScenarios((prev) => prev.filter((s) => s.id !== id));
+    if (activeScenarioId === id) setActiveScenarioId(null);
+  }
 
   function nudgeFx(delta: number) {
     setFx((prev) => ({
@@ -244,6 +288,91 @@ export function SimulationView({
           </button>
         ))}
       </div>
+
+      {/* ─── シナリオバー (premium) ─────────────────────────────────────── */}
+      {isPremium && (
+        <div style={{ marginBottom: 22, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {scenarios.map((s) => (
+            <div
+              key={s.id}
+              onClick={() => loadScenario(s)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 12px", borderRadius: 20,
+                border: `1.5px solid ${activeScenarioId === s.id ? "#2f63e6" : "#e3e9f5"}`,
+                background: activeScenarioId === s.id ? "#eef4ff" : "#fff",
+                cursor: "pointer", fontSize: 12, fontWeight: 600,
+                color: activeScenarioId === s.id ? "#2f63e6" : "#5e6b86",
+                transition: "all 0.15s",
+              }}
+            >
+              {s.name}
+              <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>
+                {s.country} · {s.duration}ヶ月
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); deleteScenario(s.id); }}
+                style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8", fontSize: 14, padding: 0, lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => setSaveModalOpen(true)}
+            style={{
+              padding: "5px 14px", borderRadius: 20,
+              border: "1.5px dashed #c8d9fd", background: "transparent",
+              color: "#2f63e6", fontSize: 12, fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            + 保存
+          </button>
+        </div>
+      )}
+
+      {/* シナリオ保存モーダル */}
+      {saveModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(20,29,51,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
+          onClick={() => setSaveModalOpen(false)}
+        >
+          <div
+            style={{ background: "#fff", borderRadius: 14, padding: 28, width: 320, boxShadow: "0 20px 60px rgba(20,29,51,.3)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#141d33", margin: "0 0 8px" }}>シナリオを保存</h3>
+            <p style={{ fontSize: 12, color: "#5e6b86", margin: "0 0 14px" }}>
+              {COUNTRY_DATA[country].name} · {duration}ヶ月 · {CITY_TIERS[cityTier].label}
+            </p>
+            <input
+              type="text"
+              placeholder="例：ロンドン正規2年"
+              value={scenarioName}
+              onChange={(e) => setScenarioName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveScenario()}
+              autoFocus
+              style={{
+                width: "100%", padding: "10px 12px", borderRadius: 8,
+                border: "1.5px solid #c8d9fd", fontSize: 14, color: "#1c2740",
+                outline: "none", boxSizing: "border-box", fontFamily: "inherit", marginBottom: 14,
+              }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setSaveModalOpen(false)} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1.5px solid #e3e9f5", background: "#f8faff", fontSize: 13, cursor: "pointer", color: "#5e6b86" }}>
+                キャンセル
+              </button>
+              <button
+                onClick={saveScenario}
+                disabled={!scenarioName.trim()}
+                style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", background: scenarioName.trim() ? "#2f63e6" : "#e3e9f5", color: scenarioName.trim() ? "#fff" : "#94a3b8", fontSize: 13, fontWeight: 600, cursor: scenarioName.trim() ? "pointer" : "not-allowed" }}
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Two-column layout — grid breakpoints via CSS (.sim-main-grid in index.css) */}
       <div className="sim-main-grid">
