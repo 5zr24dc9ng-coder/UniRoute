@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { CITY_TIERS, COUNTRY_DATA } from "../../constants/countries";
 import { calcCosts } from "../../utils/calculator";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
-import type { CityTierKey, CountryId, Fx, SimScenario, StudyType } from "../../types";
+import type { CityTierKey, CostItem, CountryId, Fx, SimScenario, StudyType } from "../../types";
 import { RemittanceCostComparison } from "../RemittanceCostComparison";
 import { FundGapAnalysis } from "../FundGapAnalysis";
 import { ScholarshipOffset } from "../ScholarshipOffset";
@@ -41,6 +41,66 @@ const simStepBtn: CSSProperties = {
   lineHeight: 1,
   flexShrink: 0,
 };
+
+// ─── 費用内訳の円グラフ（ドーナツチャート） ─────────────────────────────────────
+function CostDonutChart({
+  items,
+  centerLabel,
+  centerValue,
+}: {
+  items: CostItem[];
+  centerLabel: string;
+  centerValue: string;
+}) {
+  const size = 160;
+  const strokeWidth = 26;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  let cumulative = 0;
+  const visibleItems = items.filter((item) => item.value > 0);
+
+  return (
+    <div style={{ display: "flex", justifyContent: "center", position: "relative", marginBottom: 18 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#f0f4ff" strokeWidth={strokeWidth} />
+          {visibleItems.map((item) => {
+            const dash = item.pct * circumference;
+            const dashArray = `${dash} ${circumference - dash}`;
+            const dashOffset = -cumulative;
+            cumulative += dash;
+            return (
+              <circle
+                key={item.key}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke={item.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              >
+                <title>{`${item.label}: ${Math.round(item.pct * 100)}%`}</title>
+              </circle>
+            );
+          })}
+        </g>
+      </svg>
+      <div
+        style={{
+          position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+          textAlign: "center", pointerEvents: "none",
+        }}
+      >
+        <div style={{ fontSize: 10, color: "#8899bb", letterSpacing: "0.06em" }}>{centerLabel}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#141d33", fontFamily: '"IBM Plex Mono", monospace' }}>
+          {centerValue}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const STUDY_TYPE_LABEL: Record<StudyType, string> = {
   DEGREE: "正規留学",
@@ -114,12 +174,43 @@ function Tooltip({ label, description }: { label: string; description: string })
   );
 }
 
-function RiskCard({ label, level, value }: { label: string; level: number; value: string }) {
+function RiskCard({ label, level, value, tooltip }: { label: string; level: number; value: string; tooltip?: string }) {
+  const [showTip, setShowTip] = useState(false);
   const palette = ["#1f9268", "#c2792a", "#cf4a4a"];
   const color = palette[Math.min(level - 1, 2)];
   return (
     <div style={{ ...simCardStyle, padding: "16px 18px" }}>
-      <span style={simLabelStyle}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 13, position: "relative" }}>
+        <span style={{ ...simLabelStyle, marginBottom: 0 }}>{label}</span>
+        {tooltip && (
+          <div
+            style={{
+              width: 14, height: 14, borderRadius: "50%",
+              border: "1.5px solid #a0aec0", display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 9, fontWeight: 700, color: "#8899bb", cursor: "pointer", flexShrink: 0,
+              background: "#f8faff",
+            }}
+            onMouseEnter={() => setShowTip(true)}
+            onMouseLeave={() => setShowTip(false)}
+            onClick={() => setShowTip((v) => !v)}
+          >
+            ?
+          </div>
+        )}
+        {showTip && tooltip && (
+          <div
+            style={{
+              position: "absolute", top: "calc(100% + 8px)", left: 0,
+              background: "#141d33", color: "#fff", fontSize: 12,
+              padding: "10px 14px", borderRadius: 6, whiteSpace: "normal",
+              zIndex: 10, maxWidth: 220, boxShadow: "0 4px 12px rgba(20,29,51,.3)",
+              pointerEvents: "none", lineHeight: 1.5,
+            }}
+          >
+            {tooltip}
+          </div>
+        )}
+      </div>
       <div style={{ fontSize: 19, fontWeight: 700, color, marginBottom: 10 }}>{value}</div>
       <div style={{ display: "flex", gap: 4 }}>
         {[1, 2, 3].map((i) => (
@@ -754,27 +845,9 @@ export function SimulationView({
               </div>
             </div>
 
-            {/* Segmented bar */}
-            <div
-              style={{
-                height: 14,
-                display: "flex",
-                borderRadius: 4,
-                overflow: "hidden",
-                border: "1px solid #e3e9f5",
-                marginBottom: 18,
-              }}
-            >
-              {costs.items.map((item) => (
-                <div
-                  key={item.key}
-                  style={{ width: `${item.pct * 100}%`, background: item.color, transition: "width 0.35s ease" }}
-                  title={`${item.label}: ${costs.symbol}${Math.round(item.value).toLocaleString()} (${Math.round(
-                    item.pct * 100
-                  )}%)`}
-                />
-              ))}
-            </div>
+            {/* 内訳の円グラフ */}
+            <CostDonutChart items={costs.items} centerLabel="推定総額" centerValue={`¥${finalTotalJpy.toLocaleString()}`} />
+
 
             {/* Breakdown rows with accordion */}
             {costs.items.map((item) => {
@@ -969,7 +1042,12 @@ export function SimulationView({
 
           {/* Risk indicators — grid breakpoints via CSS (.sim-risk-grid in index.css) */}
           <div className="sim-risk-grid">
-            <RiskCard label="ビザ難易度" level={c.visaDifficulty} value={c.visaLabel} />
+            <RiskCard
+              label="ビザ難易度"
+              level={c.visaDifficulty}
+              value={c.visaLabel}
+              tooltip="承認率・平均審査日数に加え、面接の有無、資金証明の複雑さ、提出書類の煩雑さを踏まえた編集部による総合評価です。数値化しにくい要素を含むため、承認率や審査日数の数字だけとは完全には一致しません。"
+            />
             <RiskCard label="為替リスク" level={c.fxLevel} value={c.fxExposure} />
             <RiskCard label="承認率" level={approvalLevel} value={`${c.approvalRate}%`} />
           </div>

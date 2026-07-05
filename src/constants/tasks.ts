@@ -1,3 +1,8 @@
+export interface TaskLink {
+  label: string;
+  url: string;
+}
+
 export interface TaskMaster {
   id: string;
   countries: ('US' | 'UK' | 'AU' | 'CA')[];
@@ -6,6 +11,8 @@ export interface TaskMaster {
   description: string;
   timing: string;
   dependsOn?: string[]; // ハードロック機能用：このIDのタスクが完了するまでブロックする
+  /** 説明文中で言及している公式サイトへのリンク（外部サイトはユーザー自身の判断で開いてもらう） */
+  links?: TaskLink[];
 }
 
 export const MASTER_TASKS: TaskMaster[] = [
@@ -33,19 +40,22 @@ export const MASTER_TASKS: TaskMaster[] = [
     id: 'us-reg-4', countries: ['US'], types: ['DEGREE'],
     title: 'SEVIS I-901費用の支払い ($350)', timing: '渡航2〜3ヶ月前',
     description: 'fmjfee.comにて$350を支払う。支払いがSEVISレコードのアクティベート条件となるため領収書は必ず印刷・保管する。',
-    dependsOn: ['us-reg-3']
+    dependsOn: ['us-reg-3'],
+    links: [{ label: 'SEVIS I-901手数料の支払い（fmjfee.com）', url: 'https://www.fmjfee.com/i901fee/home.html' }],
   },
   {
     id: 'us-reg-5', countries: ['US'], types: ['DEGREE'],
     title: 'DS-160の作成・提出', timing: '渡航2〜3ヶ月前',
     description: '国務省CEACサイトにて提出。I-20記載のSEVIS ID、滞在先、過去5年のSNSアカウント情報を正確に入力する。',
-    dependsOn: ['us-reg-3']
+    dependsOn: ['us-reg-3'],
+    links: [{ label: 'DS-160オンライン申請（CEAC）', url: 'https://ceac.state.gov/genniv/' }],
   },
   {
     id: 'us-reg-6', countries: ['US'], types: ['DEGREE'],
     title: 'ビザ申請料の支払いと面接予約', timing: '渡航2ヶ月前',
     description: '大使館システムにてMRV申請料金 $185を支払い、面接を予約する。',
-    dependsOn: ['us-reg-5']
+    dependsOn: ['us-reg-5'],
+    links: [{ label: 'ビザ申請料の支払い・面接予約（ustraveldocs.com）', url: 'https://www.ustraveldocs.com/jp/jp-niv-visaapply.asp' }],
   },
   {
     id: 'us-reg-7', countries: ['US'], types: ['DEGREE'],
@@ -74,7 +84,8 @@ export const MASTER_TASKS: TaskMaster[] = [
     id: 'us-exc-4', countries: ['US'], types: ['EXCHANGE'],
     title: 'SEVIS I-901費用の支払い ($220)', timing: '渡航2〜3ヶ月前',
     description: 'J-1ビザ用のSEVIS費用 $220を支払う。',
-    dependsOn: ['us-exc-3']
+    dependsOn: ['us-exc-3'],
+    links: [{ label: 'SEVIS I-901手数料の支払い（fmjfee.com）', url: 'https://www.fmjfee.com/i901fee/home.html' }],
   },
   {
     id: 'us-exc-5', countries: ['US'], types: ['EXCHANGE'],
@@ -122,7 +133,11 @@ export const MASTER_TASKS: TaskMaster[] = [
     id: 'uk-reg-4', countries: ['UK'], types: ['DEGREE', 'EXCHANGE'],
     title: '英国学生ビザ申請とIHS（NHS保険）のオンライン決済', timing: '渡航2〜3ヶ月前',
     description: 'Visa申請料 £558 および高騰したIHS費用（年間 £776 × 期間）をオンラインで一括前払いする。',
-    dependsOn: ['uk-reg-2', 'uk-reg-3']
+    dependsOn: ['uk-reg-2', 'uk-reg-3'],
+    links: [
+      { label: '学生ビザのオンライン申請（GOV.UK）', url: 'https://www.gov.uk/student-visa' },
+      { label: 'IHS（医療費）の支払い（GOV.UK）', url: 'https://www.gov.uk/healthcare-immigration-application/pay' },
+    ],
   },
   {
     id: 'uk-exc-1', countries: ['UK'], types: ['EXCHANGE'],
@@ -132,12 +147,17 @@ export const MASTER_TASKS: TaskMaster[] = [
   {
     id: 'uk-lang-1', countries: ['UK'], types: ['LANGUAGE'],
     title: '期間に応じたビザ判定（11ヶ月の境界線）', timing: '渡航4〜5ヶ月前',
-    description: '6ヶ月以内ならETA（£20）。6ヶ月超〜11ヶ月以内ならShort-term Study Visa（£228 ＋ IHS £776）を選択。'
+    description: '6ヶ月以内ならETA（£20）。6ヶ月超〜11ヶ月以内ならShort-term Study Visa（£228 ＋ IHS £776）を選択。',
+    links: [
+      { label: 'ETAの申請（GOV.UK）', url: 'https://www.gov.uk/eta' },
+      { label: 'Short-term Study Visaの申請（GOV.UK）', url: 'https://www.gov.uk/apply-short-term-study-visa' },
+    ],
   },
   {
     id: 'uk-common-1', countries: ['UK'], types: ['EXCHANGE', 'LANGUAGE'],
     title: 'ETAの事前申請（6ヶ月以内のVisitor該当者）', timing: '渡航1〜2ヶ月前',
-    description: '日本国籍者が6ヶ月以内のVisitorとして渡航する場合、2025年以降は電子渡航認証（ETA: £20）の事前取得が必須。'
+    description: '日本国籍者が6ヶ月以内のVisitorとして渡航する場合、2025年以降は電子渡航認証（ETA: £20）の事前取得が必須。',
+    links: [{ label: 'ETAの申請（GOV.UK）', url: 'https://www.gov.uk/eta' }],
   },
 
   // ==========================================
@@ -169,7 +189,8 @@ export const MASTER_TASKS: TaskMaster[] = [
     id: 'au-reg-5', countries: ['AU'], types: ['DEGREE', 'EXCHANGE'],
     title: 'ImmiAccountでのビザ申請と高額決済', timing: '渡航2〜3ヶ月前',
     description: 'Subclass 500ビザ申請料 AUD 2,000（過去最高額）をオンライン決済し申請する。',
-    dependsOn: ['au-reg-3', 'au-reg-4']
+    dependsOn: ['au-reg-3', 'au-reg-4'],
+    links: [{ label: 'ImmiAccountでの学生ビザ申請（Subclass 500）', url: 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/student-500' }],
   },
   {
     id: 'au-reg-6', countries: ['AU'], types: ['DEGREE', 'EXCHANGE'],
@@ -180,13 +201,18 @@ export const MASTER_TASKS: TaskMaster[] = [
   {
     id: 'au-lang-1', countries: ['AU'], types: ['LANGUAGE'],
     title: '期間に基づくビザの判定（3ヶ月の境界線）', timing: '渡航4ヶ月前',
-    description: '3ヶ月超ならSubclass 500（申請料 AUD 2,000＋OSHC等）。3ヶ月以内ならETAを利用。'
+    description: '3ヶ月超ならSubclass 500（申請料 AUD 2,000＋OSHC等）。3ヶ月以内ならETAを利用。',
+    links: [
+      { label: 'Subclass 500 学生ビザ情報', url: 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/student-500' },
+      { label: 'ETA（Subclass 601）公式情報', url: 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/electronic-travel-authority-601' },
+    ],
   },
   {
     id: 'au-lang-2', countries: ['AU'], types: ['LANGUAGE'],
     title: '「Australian ETA App」での電子申請', timing: '渡航2〜4週間前',
     description: '3ヶ月以内の場合、専用スマホアプリからパスポートをスキャンしてETAを自己申請する（代理店不可）。',
-    dependsOn: ['au-lang-1']
+    dependsOn: ['au-lang-1'],
+    links: [{ label: 'ETA（Subclass 601）公式情報・申請案内', url: 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/electronic-travel-authority-601' }],
   },
 
   // ==========================================
@@ -217,18 +243,21 @@ export const MASTER_TASKS: TaskMaster[] = [
   {
     id: 'ca-reg-4', countries: ['CA'], types: ['DEGREE', 'EXCHANGE', 'LANGUAGE'],
     title: 'Study Permitのオンライン申請（6ヶ月超の場合）', timing: '渡航3〜5ヶ月前',
-    description: 'LOA、PAL（または免除レター）、資金証明を提出し、申請料 CAD 150 と 生体認証費 CAD 85 を決済。'
+    description: 'LOA、PAL（または免除レター）、資金証明を提出し、申請料 CAD 150 と 生体認証費 CAD 85 を決済。',
+    links: [{ label: 'Study Permitのオンライン申請（IRCC）', url: 'https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada/study-permit/apply.html' }],
   },
   {
     id: 'ca-reg-5', countries: ['CA'], types: ['DEGREE', 'EXCHANGE', 'LANGUAGE'],
     title: '指定センター（VFS）での生体認証', timing: '渡航3〜4ヶ月前',
     description: 'IRCCからの指示書受領後30日以内に、VFS Global（東京/大阪）にて指紋と顔写真を登録。',
-    dependsOn: ['ca-reg-4']
+    dependsOn: ['ca-reg-4'],
+    links: [{ label: 'VFS Global（カナダ・日本）で予約', url: 'https://visa.vfsglobal.com/jpn/ja/can/' }],
   },
   {
     id: 'ca-lang-1', countries: ['CA'], types: ['LANGUAGE'],
     title: 'eTAのオンライン申請（6ヶ月以内の場合）', timing: '渡航2〜4週間前',
-    description: '6ヶ月以内の就学ならStudy Permit不要。IRCC公式サイトからeTA（CAD 7）を申請・取得する。'
+    description: '6ヶ月以内の就学ならStudy Permit不要。IRCC公式サイトからeTA（CAD 7）を申請・取得する。',
+    links: [{ label: 'eTAのオンライン申請（IRCC）', url: 'https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/eta.html' }],
   }
 ];
 

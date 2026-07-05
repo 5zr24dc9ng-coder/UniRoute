@@ -67,51 +67,7 @@ interface TaskCardProps {
   isCompleted: boolean;
   onToggleExpand: () => void;
   onToggleComplete: () => void;
-  editable?: boolean;
   isCustom?: boolean;
-  canMoveUp?: boolean;
-  canMoveDown?: boolean;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
-  onDelete?: () => void;
-}
-
-function EditIconBtn({
-  onClick,
-  disabled,
-  title,
-  children,
-}: {
-  onClick: () => void;
-  disabled?: boolean;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      disabled={disabled}
-      title={title}
-      style={{
-        width: 22,
-        height: 22,
-        borderRadius: 6,
-        border: "1px solid #e3e9f5",
-        background: "#fff",
-        color: disabled ? "#d1d9e6" : "#8899bb",
-        fontSize: 11,
-        cursor: disabled ? "default" : "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-        padding: 0,
-        lineHeight: 1,
-      }}
-    >
-      {children}
-    </button>
-  );
 }
 
 function TaskCard({
@@ -120,13 +76,7 @@ function TaskCard({
   isCompleted,
   onToggleExpand,
   onToggleComplete,
-  editable = false,
   isCustom = false,
-  canMoveUp = false,
-  canMoveDown = false,
-  onMoveUp,
-  onMoveDown,
-  onDelete,
 }: TaskCardProps) {
   return (
     <div
@@ -207,15 +157,6 @@ function TaskCard({
           )}
         </div>
 
-        {/* 編集コントロール（premium） */}
-        {editable && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-            <EditIconBtn onClick={() => onMoveUp?.()} disabled={!canMoveUp} title="上に移動">▲</EditIconBtn>
-            <EditIconBtn onClick={() => onMoveDown?.()} disabled={!canMoveDown} title="下に移動">▼</EditIconBtn>
-            <EditIconBtn onClick={() => onDelete?.()} title={isCustom ? "削除" : "リストから非表示"}>×</EditIconBtn>
-          </div>
-        )}
-
         {/* 展開矢印 */}
         <div
           onClick={onToggleExpand}
@@ -228,6 +169,33 @@ function TaskCard({
       {isExpanded && (
         <div style={{ padding: "14px 16px", borderTop: "1px solid #d4e4fd", background: "rgba(248,250,255,0.7)" }}>
           <p style={{ fontSize: 13, color: "#1c2740", lineHeight: 1.7, margin: 0 }}>{task.description}</p>
+          {task.links && task.links.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+              {task.links.map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#2f63e6",
+                    textDecoration: "none",
+                    width: "fit-content",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                >
+                  🔗 {link.label} ↗
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -254,7 +222,7 @@ function PremiumLockBanner() {
           <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>P</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: "#4338ca" }}>プレミアム機能</span>
         </div>
-        <div style={{ fontSize: 12, color: "#6366f1", marginTop: 2 }}>出国日カウントダウン・カスタムタスクの追加や並び替えはプレミアムプランで利用できます</div>
+        <div style={{ fontSize: 12, color: "#6366f1", marginTop: 2 }}>出国日カウントダウン・カスタムタスクの追加はプレミアムプランで利用できます</div>
       </div>
     </div>
   );
@@ -282,17 +250,9 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     localStorage.getItem("uniroute_departure_date") ?? ""
   );
 
-  // タスク編集 (premium): カスタムタスク・非表示タスク・並び順 は国×留学タイプごとに保存
+  // タスク編集 (premium): カスタムタスクは国×留学タイプごとに保存
   const [customTasksMap, setCustomTasksMap] = useState<Record<string, TaskMaster[]>>(() => {
     try { return JSON.parse(localStorage.getItem("uniroute_custom_tasks") ?? "{}"); }
-    catch { return {}; }
-  });
-  const [hiddenIdsMap, setHiddenIdsMap] = useState<Record<string, string[]>>(() => {
-    try { return JSON.parse(localStorage.getItem("uniroute_hidden_tasks") ?? "{}"); }
-    catch { return {}; }
-  });
-  const [orderMap, setOrderMap] = useState<Record<string, Record<string, string[]>>>(() => {
-    try { return JSON.parse(localStorage.getItem("uniroute_task_order") ?? "{}"); }
     catch { return {}; }
   });
 
@@ -316,14 +276,6 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     localStorage.setItem("uniroute_custom_tasks", JSON.stringify(customTasksMap));
   }, [customTasksMap]);
 
-  useEffect(() => {
-    localStorage.setItem("uniroute_hidden_tasks", JSON.stringify(hiddenIdsMap));
-  }, [hiddenIdsMap]);
-
-  useEffect(() => {
-    localStorage.setItem("uniroute_task_order", JSON.stringify(orderMap));
-  }, [orderMap]);
-
 
   const countryName = COUNTRY_DATA[selectedCountry].name;
   const studyTypeLabel = { DEGREE: "正規留学", EXCHANGE: "交換留学", LANGUAGE: "語学留学" }[studyType];
@@ -332,11 +284,9 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
   // 現在の国×留学タイプの組み合わせキー
   const comboKey = `${selectedCountry}_${studyType}`;
   const customTasks = customTasksMap[comboKey] ?? [];
-  const hiddenIds = new Set(hiddenIdsMap[comboKey] ?? []);
-  const groupOrder = orderMap[comboKey] ?? {};
 
-  // デフォルトタスク＋カスタムタスクを結合し、非表示にしたものを除外
-  const visibleTasks = [...masterTasks, ...customTasks].filter((t) => !hiddenIds.has(t.id));
+  // デフォルトタスク＋カスタムタスクを結合
+  const visibleTasks = [...masterTasks, ...customTasks];
 
   const getMonth = (timing: string): number => {
     const match = timing.match(/\d+/);
@@ -350,18 +300,6 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     else acc.push({ timing: task.timing, tasks: [task] });
     return acc;
   }, []);
-
-  // タイミンググループごとに、ユーザーが並び替えた順序があれば適用（未知のIDは末尾に自然な順で追加）
-  grouped.forEach((g) => {
-    const manual = groupOrder[g.timing];
-    if (!manual || manual.length === 0) return;
-    const manualIndex = new Map(manual.map((id, i) => [id, i]));
-    const known = g.tasks.filter((t) => manualIndex.has(t.id)).sort(
-      (a, b) => manualIndex.get(a.id)! - manualIndex.get(b.id)!
-    );
-    const unknown = g.tasks.filter((t) => !manualIndex.has(t.id));
-    g.tasks = [...known, ...unknown];
-  });
 
   const existingTimings = grouped.map((g) => g.timing);
 
@@ -378,35 +316,6 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
       else next.add(id);
       return next;
     });
-  }
-
-  function moveTask(timing: string, taskId: string, direction: -1 | 1) {
-    const group = grouped.find((g) => g.timing === timing);
-    if (!group) return;
-    const ids = group.tasks.map((t) => t.id);
-    const idx = ids.indexOf(taskId);
-    const newIdx = idx + direction;
-    if (idx === -1 || newIdx < 0 || newIdx >= ids.length) return;
-    [ids[idx], ids[newIdx]] = [ids[newIdx], ids[idx]];
-    setOrderMap((prev) => ({
-      ...prev,
-      [comboKey]: { ...(prev[comboKey] ?? {}), [timing]: ids },
-    }));
-  }
-
-  function deleteTask(task: TaskMaster) {
-    const isCustom = customTasks.some((t) => t.id === task.id);
-    if (isCustom) {
-      setCustomTasksMap((prev) => ({
-        ...prev,
-        [comboKey]: (prev[comboKey] ?? []).filter((t) => t.id !== task.id),
-      }));
-    } else {
-      setHiddenIdsMap((prev) => ({
-        ...prev,
-        [comboKey]: [...(prev[comboKey] ?? []), task.id],
-      }));
-    }
   }
 
   function addCustomTask() {
@@ -768,7 +677,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
                 </div>
 
                 {/* タスクカード */}
-                {tasks.map((task, ti) => (
+                {tasks.map((task) => (
                   <div
                     key={task.id}
                     style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}
@@ -794,13 +703,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
                         isCompleted={completedIds.has(task.id)}
                         onToggleExpand={() => setExpandedId((prev) => (prev === task.id ? null : task.id))}
                         onToggleComplete={() => toggleComplete(task.id)}
-                        editable={isPremium}
                         isCustom={customTasks.some((t) => t.id === task.id)}
-                        canMoveUp={ti > 0}
-                        canMoveDown={ti < tasks.length - 1}
-                        onMoveUp={() => moveTask(timing, task.id, -1)}
-                        onMoveDown={() => moveTask(timing, task.id, 1)}
-                        onDelete={() => deleteTask(task)}
                       />
                     </div>
                   </div>

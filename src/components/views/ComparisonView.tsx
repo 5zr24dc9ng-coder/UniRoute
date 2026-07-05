@@ -39,37 +39,41 @@ const ROWS: Row[] = [
     best: "min",
   },
   {
-    type: "data", label: "年間学費",
+    type: "data", label: "年間学費", sub: "円換算",
     getValue: (id, fx, st) => {
       const c = COUNTRY_DATA[id];
       const costs = calcCosts(id, DURATION, fx, "capital", st);
       const tuition = costs.items.find((i) => i.key === "tuition");
       const val = tuition ? tuition.value : 0;
-      return { display: val === 0 ? "無料" : `${c.symbol}${Math.round(val / (DURATION / 12)).toLocaleString()}`, raw: val };
+      const annualJpy = Math.round((val / (DURATION / 12)) * fx[c.currency]);
+      return { display: val === 0 ? "無料" : `¥${annualJpy.toLocaleString()}`, raw: annualJpy };
     },
     best: "min",
   },
   {
-    type: "data", label: "月額住居費",
-    getValue: (id) => {
+    type: "data", label: "月額住居費", sub: "円換算",
+    getValue: (id, fx) => {
       const c = COUNTRY_DATA[id];
-      return { display: `${c.symbol}${c.rentPerMonth.toLocaleString()}`, raw: c.rentPerMonth };
+      const jpy = Math.round(c.rentPerMonth * fx[c.currency]);
+      return { display: `¥${jpy.toLocaleString()}`, raw: jpy };
     },
     best: "min",
   },
   {
-    type: "data", label: "月額生活費",
-    getValue: (id) => {
+    type: "data", label: "月額生活費", sub: "円換算",
+    getValue: (id, fx) => {
       const c = COUNTRY_DATA[id];
-      return { display: `${c.symbol}${c.livingPerMonth.toLocaleString()}`, raw: c.livingPerMonth };
+      const jpy = Math.round(c.livingPerMonth * fx[c.currency]);
+      return { display: `¥${jpy.toLocaleString()}`, raw: jpy };
     },
     best: "min",
   },
   {
-    type: "data", label: "資金証明額", sub: "ビザ申請時に必要",
-    getValue: (id) => {
+    type: "data", label: "資金証明額", sub: "ビザ申請時に必要・円換算",
+    getValue: (id, fx) => {
       const c = COUNTRY_DATA[id];
-      return { display: `${c.symbol}${c.proofOfFunds.toLocaleString()}`, raw: c.proofOfFunds };
+      const jpy = Math.round(c.proofOfFunds * fx[c.currency]);
+      return { display: `¥${jpy.toLocaleString()}`, raw: jpy };
     },
     best: "min",
   },
@@ -77,6 +81,7 @@ const ROWS: Row[] = [
   { type: "section", label: "ビザ・審査" },
   {
     type: "data", label: "ビザ難易度",
+    sub: "承認率・審査日数・面接の有無・資金証明の複雑さ等を踏まえた総合評価",
     getValue: (id) => {
       const c = COUNTRY_DATA[id];
       return { display: c.visaLabel, raw: c.visaDifficulty };
@@ -116,6 +121,7 @@ const ROWS: Row[] = [
       return { display: c.cities.capital, raw: 0 };
     },
     best: "none",
+    format: "text",
   },
 ];
 
@@ -201,7 +207,101 @@ export function ComparisonView({ fx, studyType }: ComparisonViewProps) {
         </p>
       </div>
 
-      {/* ─── 比較テーブル ─────────────────────────────────────────── */}
+      {/* ─── 比較テーブル（モバイル: 横スクロールなしの国別カード） ───────────── */}
+      {isSM ? (
+        <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 16 }}>
+          {COUNTRY_ORDER.map((id) => {
+            const c = COUNTRY_DATA[id];
+            return (
+              <div
+                key={id}
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  borderTop: `3px solid ${c.accent}`,
+                }}
+              >
+                {/* 国ヘッダー */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid #f1f5f9" }}>
+                  <span style={{ fontSize: 28 }}>{c.flag}</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#141d33", letterSpacing: "-0.01em" }}>{c.name}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: '"IBM Plex Mono", monospace' }}>{c.currency}</div>
+                  </div>
+                </div>
+
+                {/* 各指標 */}
+                {ROWS.map((row, ri) => {
+                  if (row.type === "section") {
+                    return (
+                      <div
+                        key={ri}
+                        style={{
+                          padding: "8px 16px",
+                          background: "#f8fafc",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#64748b",
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
+                          fontFamily: '"IBM Plex Mono", monospace',
+                          borderTop: ri > 0 ? "1px solid #e2e8f0" : "none",
+                        }}
+                      >
+                        {row.label}
+                      </div>
+                    );
+                  }
+                  const bestIdx = getBestIndex(row, COUNTRY_ORDER, fx, studyType);
+                  const isBest = COUNTRY_ORDER.indexOf(id) === bestIdx;
+                  const val = row.getValue(id, fx, studyType);
+                  return (
+                    <div
+                      key={ri}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 16px",
+                        borderTop: "1px solid #f1f5f9",
+                        background: isBest ? "#f0fdf4" : "transparent",
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: "#334155", fontWeight: 500 }}>{row.label}</div>
+                        {row.sub && (
+                          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>{row.sub}</div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: isBest ? 700 : 600,
+                            color: isBest ? "#15803d" : "#1e293b",
+                            fontFamily: '"IBM Plex Mono", monospace',
+                            letterSpacing: "-0.01em",
+                          }}
+                        >
+                          {val.display}
+                        </span>
+                        {isBest && (
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "#16a34a", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                            最良
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <div style={{ minWidth: totalWidth }}>
 
@@ -322,12 +422,14 @@ export function ComparisonView({ fx, studyType }: ComparisonViewProps) {
                       )}
                       <span
                         style={{
-                          fontSize: isSM ? 12 : 13,
+                          fontSize: row.format === "text" ? (isSM ? 11 : 13) : (isSM ? 12 : 13),
                           fontWeight: isBest ? 700 : 600,
                           color: isBest ? "#15803d" : "#1e293b",
                           fontFamily: '"IBM Plex Mono", monospace',
                           letterSpacing: "-0.01em",
-                          whiteSpace: "nowrap",
+                          whiteSpace: row.format === "text" ? "normal" : "nowrap",
+                          wordBreak: row.format === "text" ? "break-word" : "normal",
+                          lineHeight: row.format === "text" ? 1.4 : 1.2,
                         }}
                       >
                         {val.display}
@@ -357,6 +459,7 @@ export function ComparisonView({ fx, studyType }: ComparisonViewProps) {
           <div style={{ height: 1, background: "#e2e8f0" }} />
         </div>
       </div>
+      )}
 
       {/* ─── サマリーバナー ─────────────────────────────────────────── */}
       <div style={{ padding: isSM ? "24px 16px 0" : "28px 40px 0" }}>
@@ -397,6 +500,63 @@ export function ComparisonView({ fx, studyType }: ComparisonViewProps) {
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ─── 推定総費用の棒グラフ（円換算） ─────────────────────────────── */}
+      <div style={{ padding: isSM ? "20px 16px 24px" : "24px 40px 32px" }}>
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: isSM ? "18px 18px" : "22px 26px" }}>
+          <p
+            style={{
+              fontSize: 11, fontWeight: 700, color: "#64748b",
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              fontFamily: '"IBM Plex Mono", monospace', margin: "0 0 16px",
+            }}
+          >
+            推定総費用の比較（円換算・{studyTypeLabel} {DURATION}ヶ月・首都圏）
+          </p>
+          {[...totalCosts]
+            .sort((a, b) => a.jpy - b.jpy)
+            .map((tc) => {
+              const c = COUNTRY_DATA[tc.id];
+              const maxJpy = Math.max(...totalCosts.map((t) => t.jpy));
+              const pct = maxJpy > 0 ? (tc.jpy / maxJpy) * 100 : 0;
+              const isBest = tc.id === bestCountry.id;
+              return (
+                <div key={tc.id} style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
+                      {c.flag} {c.name}
+                      {isBest && (
+                        <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "#16a34a", letterSpacing: "0.04em" }}>
+                          最安
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 13, fontWeight: 700,
+                        color: isBest ? "#16a34a" : "#1e293b",
+                        fontFamily: '"IBM Plex Mono", monospace',
+                      }}
+                    >
+                      ¥{tc.jpy.toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ height: 10, background: "#f1f5f9", borderRadius: 5, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${pct}%`,
+                        background: isBest ? "#16a34a" : c.accent,
+                        borderRadius: 5,
+                        transition: "width 0.4s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
         </div>
       </div>
     </div>
