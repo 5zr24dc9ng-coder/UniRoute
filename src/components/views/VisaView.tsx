@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
 import { useVisaCostCalculator } from "../../hooks/useVisaCostCalculator";
 import { useProofOfFundsCalculator } from "../../hooks/useProofOfFundsCalculator";
@@ -24,6 +24,87 @@ const DOC_CURRENCY_SYMBOL: Record<string, string> = { USD: "US$", CAD: "CA$", AU
 
 function fmt(n: number): string {
   return Math.round(n).toLocaleString("ja-JP");
+}
+
+// ─── 28日ルール：日付ユーティリティ ─────────────────────────────────────────
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function formatDateJp(date: Date): string {
+  return date.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function daysUntil(date: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+/**
+ * UKVI「28日ルール」：
+ * ・残高証明書の対象日（closing balance date）から遡って28日間、必要額以上を維持している必要がある
+ * ・その対象日は、ビザ申請日から遡って31日以内でなければならない
+ * → 最も安全な対象日 = 申請日そのもの。その場合、資金は「申請日の27日前」までに入金しておく必要がある。
+ */
+function computeFundsSchedule(applicationDateStr: string) {
+  const applicationDate = new Date(applicationDateStr + "T00:00:00");
+  const depositDeadline = addDays(applicationDate, -27); // 申請日を含めて28日間
+  const statementWindowStart = addDays(applicationDate, -31);
+  return { applicationDate, depositDeadline, statementWindowStart };
+}
+
+function DeadlineBadge({ days, label }: { days: number; label: string }) {
+  const isOverdue = days < 0;
+  const isUrgent = days >= 0 && days <= 14;
+  const bg = isOverdue ? "#cf4a4a" : isUrgent ? "#c2792a" : "#1f9268";
+  const text = isOverdue ? `${label}を${Math.abs(days)}日超過` : `${label}まであと${days}日`;
+  return (
+    <span
+      style={{
+        background: bg,
+        color: "#fff",
+        borderRadius: 6,
+        padding: "3px 10px",
+        fontSize: 11,
+        fontWeight: 700,
+        fontFamily: '"IBM Plex Mono", monospace',
+        letterSpacing: "0.02em",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+function PremiumLockBanner({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        border: "1.5px dashed #a5b4fc",
+        borderRadius: 12,
+        padding: "14px 18px",
+        background: "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+      }}
+    >
+      <span style={{ fontSize: 16 }}>🔒</span>
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>P</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#4338ca" }}>プレミアム機能</span>
+        </div>
+        <div style={{ fontSize: 12, color: "#6366f1", marginTop: 2 }}>{text}</div>
+      </div>
+    </div>
+  );
 }
 
 function ToggleBtn({
@@ -58,7 +139,11 @@ function ToggleBtn({
   );
 }
 
-export function VisaView() {
+interface VisaViewProps {
+  isPremium: boolean;
+}
+
+export function VisaView({ isPremium }: VisaViewProps) {
   const isSmall = useWindowWidth() < 1024;
 
   const [country, setCountry] = useState<CountryCodeVisa>("US");
@@ -67,6 +152,25 @@ export function VisaView() {
   const [spouse, setSpouse] = useState<0 | 1>(0);
   const [children, setChildren] = useState(0);
   const [ukCity, setUkCity] = useState<UkCity>("LONDON");
+
+  // 28日ルール：ビザ申請予定日（premium, UK限定）
+  const [applicationDate, setApplicationDate] = useState<string>(() =>
+    localStorage.getItem("uniroute_visa_application_date") ?? ""
+  );
+
+  useEffect(() => {
+    if (applicationDate) localStorage.setItem("uniroute_visa_application_date", applicationDate);
+  }, [applicationDate]);
+
+  // 未入力なら出国日（TaskViewで保存済みの場合）から30日前を初期候補として提案
+  useEffect(() => {
+    if (applicationDate) return;
+    const departureDate = localStorage.getItem("uniroute_departure_date");
+    if (!departureDate) return;
+    const suggested = addDays(new Date(departureDate + "T00:00:00"), -30);
+    setApplicationDate(suggested.toISOString().slice(0, 10));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // オブジェクト参照を安定させて不要な再計算を防ぐ
   const visaInput = useMemo<VisaInput>(() => {
@@ -88,6 +192,11 @@ export function VisaView() {
   const proofMonths = Math.min(durationMonths, 9);
 
   const pofSym = DOC_CURRENCY_SYMBOL[proofOfFunds.docCurrency] ?? "";
+
+  const fundsSchedule = useMemo(
+    () => (applicationDate ? computeFundsSchedule(applicationDate) : null),
+    [applicationDate]
+  );
 
   const pad = isSmall ? "20px 16px" : "32px 40px";
 
@@ -481,6 +590,134 @@ export function VisaView() {
           </div>
         </div>
       </div>
+
+      {/* ─── Section C: 28日ルール 具体的スケジュール（UK限定・premium） ─── */}
+      {country === "UK" && (
+        <div
+          style={{
+            marginTop: 20,
+            background: "#fff",
+            borderRadius: 14,
+            border: "1px solid #e3e9f5",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ background: "#fff7ed", padding: "16px 24px", borderBottom: "1px solid #e3e9f5" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
+              <span
+                style={{
+                  width: 22, height: 22, borderRadius: 6,
+                  background: "#c2792a", color: "#fff",
+                  fontSize: 11, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                C
+              </span>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#c2792a", margin: 0 }}>
+                28日ルール：具体的スケジュール
+              </p>
+              <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>P</span>
+            </div>
+            <p style={{ fontSize: 11, color: "#8899bb", margin: 0 }}>
+              いつまでにいくら口座に入れておくべきか、日付で確認
+            </p>
+          </div>
+
+          <div style={{ padding: "20px 24px" }}>
+            {!isPremium ? (
+              <PremiumLockBanner text="申請予定日から逆算した資金投入期限の表示はプレミアムプランで利用できます" />
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    marginBottom: 18,
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740", flexShrink: 0 }}>
+                    🗓️ ビザ申請予定日
+                  </span>
+                  <input
+                    type="date"
+                    value={applicationDate}
+                    onChange={(e) => setApplicationDate(e.target.value)}
+                    style={{
+                      border: "1.5px solid #f3d9b8",
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      fontSize: 13,
+                      color: "#1c2740",
+                      background: "#fffaf3",
+                      cursor: "pointer",
+                      outline: "none",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                  {!applicationDate && (
+                    <span style={{ fontSize: 12, color: "#8899bb" }}>
+                      日付を入力するとスケジュールが表示されます
+                    </span>
+                  )}
+                </div>
+
+                {fundsSchedule && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {/* 資金投入期限 */}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        background: "#fffaf3",
+                        borderRadius: 10,
+                        padding: "14px 16px",
+                        border: "1px solid #f3d9b8",
+                      }}
+                    >
+                      <div>
+                        <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 4px" }}>
+                          この日までに £{fmt(proofOfFunds.requiredFundsInDocCurrency)} 以上を口座に入金
+                        </p>
+                        <p style={{ fontSize: 18, fontWeight: 700, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                          {formatDateJp(fundsSchedule.depositDeadline)}
+                        </p>
+                      </div>
+                      <DeadlineBadge days={daysUntil(fundsSchedule.depositDeadline)} label="入金期限" />
+                    </div>
+
+                    {/* 残高証明書の有効期間 */}
+                    <div
+                      style={{
+                        background: "#f8faff",
+                        borderRadius: 10,
+                        padding: "14px 16px",
+                      }}
+                    >
+                      <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 6px" }}>
+                        残高証明書として使える対象日の範囲
+                      </p>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                        {formatDateJp(fundsSchedule.statementWindowStart)} 〜 {formatDateJp(fundsSchedule.applicationDate)}
+                      </p>
+                    </div>
+
+                    <p style={{ fontSize: 11, color: "#8899bb", margin: 0, lineHeight: 1.7 }}>
+                      ※ UKVIの28日ルール：残高証明書の対象日（残高の記載日）から遡って28日間、必要額以上を口座に維持している必要があります。さらにその対象日は、ビザ申請日から遡って31日以内でなければなりません。上記は最も安全な「対象日＝申請日」で計算した最終期限です。銀行の処理日数を考慮し、数日〜1週間の余裕を持たせることをおすすめします。
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

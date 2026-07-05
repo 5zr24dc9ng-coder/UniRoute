@@ -180,7 +180,7 @@ export default function App() {
           )}
           {view === "matrix" && <ComparisonView fx={fx} studyType={studyType} />}
           {view === "tasks" && <TaskView country={country} studyType={studyType} isPremium={isPremium} />}
-          {view === "visa" && <VisaView />}
+          {view === "visa" && <VisaView isPremium={isPremium} />}
         </main>
         <Footer isSmall={isSmall} />
       </div>
