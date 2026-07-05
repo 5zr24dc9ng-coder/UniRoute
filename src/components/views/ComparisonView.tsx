@@ -503,60 +503,114 @@ export function ComparisonView({ fx, studyType }: ComparisonViewProps) {
         </div>
       </div>
 
-      {/* ─── 推定総費用の棒グラフ（円換算） ─────────────────────────────── */}
+      {/* ─── 推定総費用の内訳（積み上げ棒グラフ・円換算） ─────────────────── */}
       <div style={{ padding: isSM ? "20px 16px 24px" : "24px 40px 32px" }}>
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: isSM ? "18px 18px" : "22px 26px" }}>
           <p
             style={{
               fontSize: 11, fontWeight: 700, color: "#64748b",
               letterSpacing: "0.08em", textTransform: "uppercase",
-              fontFamily: '"IBM Plex Mono", monospace', margin: "0 0 16px",
+              fontFamily: '"IBM Plex Mono", monospace', margin: "0 0 20px",
             }}
           >
-            推定総費用の比較（円換算・{studyTypeLabel} {DURATION}ヶ月・首都圏）
+            推定総費用の内訳（円換算・{studyTypeLabel} {DURATION}ヶ月・首都圏）
           </p>
-          {[...totalCosts]
-            .sort((a, b) => a.jpy - b.jpy)
-            .map((tc) => {
-              const c = COUNTRY_DATA[tc.id];
-              const maxJpy = Math.max(...totalCosts.map((t) => t.jpy));
-              const pct = maxJpy > 0 ? (tc.jpy / maxJpy) * 100 : 0;
-              const isBest = tc.id === bestCountry.id;
-              return (
-                <div key={tc.id} style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
-                      {c.flag} {c.name}
-                      {isBest && (
-                        <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "#16a34a", letterSpacing: "0.04em" }}>
-                          最安
+
+          {(() => {
+            const maxJpy = Math.max(...totalCosts.map((t) => t.jpy));
+            const maxBarPx = isSM ? 160 : 220;
+            const barWidth = isSM ? 48 : 72;
+            const STACK_ORDER: { key: string; label: string; color: string }[] = [
+              { key: "tuition", label: "年間学費", color: "#3b82f6" },
+              { key: "housing", label: "月額住居費", color: "#10b981" },
+              { key: "visa_insurance", label: "ビザ・保険料", color: "#8b5cf6" },
+              { key: "living", label: "月額生活費", color: "#f59e0b" },
+              { key: "reserve", label: "資金証明額", color: "#ef4444" },
+            ];
+
+            return (
+              <>
+                <span style={{ fontSize: 11, color: "#94a3b8", fontFamily: '"IBM Plex Mono", monospace' }}>円</span>
+                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-around", gap: 8, marginTop: 4 }}>
+                  {COUNTRY_ORDER.map((id) => {
+                    const tc = totalCosts.find((t) => t.id === id)!;
+                    const costs = calcCosts(id, DURATION, fx, "capital", studyType);
+                    const barHeightPx = maxJpy > 0 ? Math.max(4, (tc.jpy / maxJpy) * maxBarPx) : 0;
+                    const isBest = id === bestCountry.id;
+                    return (
+                      <div key={id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                        <span
+                          style={{
+                            fontSize: isSM ? 11 : 12, fontWeight: 700,
+                            color: isBest ? "#16a34a" : "#1e293b",
+                            fontFamily: '"IBM Plex Mono", monospace', whiteSpace: "nowrap",
+                          }}
+                        >
+                          ¥{tc.jpy.toLocaleString()}
                         </span>
-                      )}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 13, fontWeight: 700,
-                        color: isBest ? "#16a34a" : "#1e293b",
-                        fontFamily: '"IBM Plex Mono", monospace',
-                      }}
-                    >
-                      ¥{tc.jpy.toLocaleString()}
-                    </span>
-                  </div>
-                  <div style={{ height: 10, background: "#f1f5f9", borderRadius: 5, overflow: "hidden" }}>
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${pct}%`,
-                        background: isBest ? "#16a34a" : c.accent,
-                        borderRadius: 5,
-                        transition: "width 0.4s ease",
-                      }}
-                    />
-                  </div>
+                        <div
+                          style={{
+                            width: barWidth, height: barHeightPx,
+                            display: "flex", flexDirection: "column",
+                            borderRadius: "6px 6px 0 0", overflow: "hidden",
+                            boxShadow: isBest ? "0 0 0 2px #16a34a" : "none",
+                          }}
+                        >
+                          {STACK_ORDER.map(({ key, label, color }) => {
+                            const item = costs.items.find((i) => i.key === key);
+                            if (!item || item.pct <= 0) return null;
+                            return (
+                              <div
+                                key={key}
+                                style={{ height: `${item.pct * 100}%`, background: color }}
+                                title={`${label}: ${Math.round(item.pct * 100)}%`}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+
+                {/* x軸ライン */}
+                <div style={{ borderTop: "1.5px solid #cbd5e1", marginTop: 2 }} />
+
+                {/* 国ラベル */}
+                <div style={{ display: "flex", justifyContent: "space-around", gap: 8, marginTop: 8 }}>
+                  {COUNTRY_ORDER.map((id) => {
+                    const c = COUNTRY_DATA[id];
+                    const isBest = id === bestCountry.id;
+                    return (
+                      <div key={id} style={{ width: barWidth, textAlign: "center" }}>
+                        <div style={{ fontSize: isSM ? 12 : 13, fontWeight: 600, color: "#1e293b" }}>
+                          {c.flag} {c.name}
+                        </div>
+                        {isBest && (
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "#16a34a", letterSpacing: "0.04em", marginTop: 2 }}>
+                            最安
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ textAlign: "center", fontSize: 11, color: "#94a3b8", fontFamily: '"IBM Plex Mono", monospace', marginTop: 6 }}>
+                  国
+                </div>
+
+                {/* 凡例 */}
+                <div style={{ display: "grid", gridTemplateColumns: isSM ? "1fr 1fr" : "repeat(3, 1fr)", gap: 10, marginTop: 22, paddingTop: 16, borderTop: "1px solid #f1f5f9" }}>
+                  {STACK_ORDER.map(({ key, label, color }) => (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 12, height: 12, borderRadius: 3, background: color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: "#475569" }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>

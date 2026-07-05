@@ -73,6 +73,8 @@ interface TaskCardProps {
   onDeleteCustom?: () => void;
   onDragHandleStart?: () => void;
   onDragHandleEnd?: () => void;
+  isDragging?: boolean;
+  isDragOver?: boolean;
 }
 
 function TaskCard({
@@ -87,17 +89,19 @@ function TaskCard({
   onDeleteCustom,
   onDragHandleStart,
   onDragHandleEnd,
+  isDragging = false,
+  isDragOver = false,
 }: TaskCardProps) {
   return (
     <div
       style={{
-        border: `1.5px solid ${isCompleted ? "#bbf7d0" : "#c8d9fd"}`,
+        border: `1.5px solid ${isDragOver ? "#2f63e6" : isCompleted ? "#bbf7d0" : "#c8d9fd"}`,
         borderRadius: 12,
         overflow: "hidden",
         background: isCompleted ? "#f0fdf4" : "#eef4ff",
-        boxShadow: "0 1px 2px rgba(20,29,51,.03)",
-        opacity: isCompleted ? 0.75 : 1,
-        transition: "all 0.2s ease",
+        boxShadow: isDragOver ? "0 0 0 2px rgba(47,99,230,.25)" : "0 1px 2px rgba(20,29,51,.03)",
+        opacity: isDragging ? 0.4 : isCompleted ? 0.75 : 1,
+        transition: "all 0.15s ease",
       }}
     >
       <div
@@ -110,7 +114,7 @@ function TaskCard({
             onDragStart={(e) => { e.stopPropagation(); onDragHandleStart?.(); }}
             onDragEnd={() => onDragHandleEnd?.()}
             title="ドラッグして並び替え"
-            style={{ cursor: "grab", color: "#b8c2d9", fontSize: 14, flexShrink: 0, lineHeight: 1, userSelect: "none" }}
+            style={{ cursor: isDragging ? "grabbing" : "grab", color: "#b8c2d9", fontSize: 14, flexShrink: 0, lineHeight: 1, userSelect: "none" }}
           >
             ≡
           </div>
@@ -225,13 +229,13 @@ function TaskCard({
                 onClick={(e) => { e.stopPropagation(); onEditCustom?.(); }}
                 style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "#2f63e6", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
               >
-                ✎ 編集
+                編集
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteCustom?.(); }}
                 style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "#cf4a4a", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
               >
-                🗑 削除
+                削除
               </button>
             </div>
           )}
@@ -307,9 +311,10 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
   const [useCustomTiming, setUseCustomTiming] = useState(false);
   const [newTaskTimingCustom, setNewTaskTimingCustom] = useState("");
 
-  // ドラッグ中のタスクID・グループ（並び替え用）
+  // ドラッグ中のタスクID・グループ・現在ドラッグオーバー中のタスクID（並び替え用）
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [draggedTiming, setDraggedTiming] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
 
   // persistences
   useEffect(() => {
@@ -460,6 +465,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     if (!draggedTaskId || draggedTiming !== timing || draggedTaskId === targetTaskId) {
       setDraggedTaskId(null);
       setDraggedTiming(null);
+      setDragOverTaskId(null);
       return;
     }
     const group = grouped.find((g) => g.timing === timing);
@@ -476,6 +482,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     }));
     setDraggedTaskId(null);
     setDraggedTiming(null);
+    setDragOverTaskId(null);
   }
 
   return (
@@ -819,6 +826,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
                 {tasks.map((task) => (
                   <div
                     key={task.id}
+                    onDragEnter={() => { if (draggedTaskId && draggedTaskId !== task.id) setDragOverTaskId(task.id); }}
                     onDragOver={(e) => { if (draggedTaskId) e.preventDefault(); }}
                     onDrop={(e) => { e.preventDefault(); handleDropOnTask(timing, task.id); }}
                     style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}
@@ -849,7 +857,9 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
                         onEditCustom={() => openEditModal(task)}
                         onDeleteCustom={() => deleteCustomTask(task.id)}
                         onDragHandleStart={() => { setDraggedTaskId(task.id); setDraggedTiming(timing); }}
-                        onDragHandleEnd={() => { setDraggedTaskId(null); setDraggedTiming(null); }}
+                        onDragHandleEnd={() => { setDraggedTaskId(null); setDraggedTiming(null); setDragOverTaskId(null); }}
+                        isDragging={draggedTaskId === task.id}
+                        isDragOver={dragOverTaskId === task.id}
                       />
                     </div>
                   </div>
