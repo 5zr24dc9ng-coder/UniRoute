@@ -9,6 +9,7 @@ import { SimulationView } from "./components/views/SimulationView";
 import { ComparisonView } from "./components/views/ComparisonView";
 import { TaskView } from "./components/views/TaskView";
 import { VisaView } from "./components/views/VisaView";
+import { ShareReportView } from "./components/views/ShareReportView";
 import type { CityTierKey, CountryId, StudyType, ViewId } from "./types";
 
 function LegalModal({ onAgree }: { onAgree: () => void }) {
@@ -105,15 +106,19 @@ export default function App() {
     if (savedDuration) setDuration(parseInt(savedDuration, 10));
     if (savedCityTier) setCityTier(savedCityTier);
 
-    // プレミアム状態を復元（後でStripe連携に置き換え）
-    if (localStorage.getItem("uniroute_premium") === "true") setIsPremium(true);
+    // プレミアムは「?admin=true」がURLにある間だけ有効（永続化しない）
+    // 以前のバージョンではlocalStorageに保存して以後ずっと解放されたままになっていたため、
+    // 一度でも?admin=trueを踏んだ端末（自分のブラウザ含む）は毎回プレミアムが見えてしまう不具合があった。
+    // 誰でも推測できるURLで永久に無料開放されるのを防ぐため、URLにパラメータが無い読み込みでは必ずfalseに戻す。
+    localStorage.removeItem("uniroute_premium");
 
-    // ?admin=true を踏んだら Analytics 計測除外 + プレミアム解放
+    // ?admin=true を踏んだら Analytics 計測除外 + このセッションのみプレミアム解放
     if (window.location.search.includes("admin=true")) {
       localStorage.setItem("ignore_analytics", "true");
-      localStorage.setItem("uniroute_premium", "true");
       setIsPremium(true);
-      alert("【設定完了】Analytics除外 + プレミアム機能を解放しました。");
+      alert("【設定完了】Analytics除外 + プレミアム機能を解放しました（このURLでアクセスしている間のみ有効）。");
+    } else {
+      setIsPremium(false);
     }
   }, []);
 
@@ -138,6 +143,11 @@ export default function App() {
     localStorage.setItem("uniroute_legal_agreed", "true");
     setLegalAgreed(true);
   };
+
+  // 家族への共有レポート（?share=1&...）: ログイン不要の閲覧専用ページ。全Hookの呼び出し後に判定する
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("share") === "1") {
+    return <ShareReportView />;
+  }
 
   if (!legalAgreed) {
     return <LegalModal onAgree={handleLegalAgree} />;
@@ -168,6 +178,7 @@ export default function App() {
               country={country}
               setCountry={setCountry}
               studyType={studyType}
+              setStudyType={setStudyType}
               duration={duration}
               setDuration={setDuration}
               fx={fx}

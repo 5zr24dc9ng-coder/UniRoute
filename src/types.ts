@@ -65,6 +65,16 @@ export interface CostResult {
   remittanceBase: number;
 }
 
+/** シミュレーション保存シナリオ（比較機能で複数横断表示するため共有型として定義） */
+export interface SimScenario {
+  id: string;
+  name: string;
+  country: CountryId;
+  studyType: StudyType;
+  duration: number;
+  cityTier: CityTierKey;
+}
+
 /** クリティカルパス上のタスク */
 export interface Task {
   id: number;

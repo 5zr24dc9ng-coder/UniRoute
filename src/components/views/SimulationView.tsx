@@ -3,8 +3,11 @@ import { useState, useEffect } from "react";
 import { CITY_TIERS, COUNTRY_DATA } from "../../constants/countries";
 import { calcCosts } from "../../utils/calculator";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
-import type { CityTierKey, CountryId, Fx, StudyType } from "../../types";
+import type { CityTierKey, CountryId, Fx, SimScenario, StudyType } from "../../types";
 import { RemittanceCostComparison } from "../RemittanceCostComparison";
+import { FundGapAnalysis } from "../FundGapAnalysis";
+import { ScholarshipOffset } from "../ScholarshipOffset";
+import { ScenarioComparisonTable } from "../ScenarioComparisonTable";
 
 const simCardStyle: CSSProperties = {
   background: "#fff",
@@ -37,6 +40,12 @@ const simStepBtn: CSSProperties = {
   fontWeight: 400,
   lineHeight: 1,
   flexShrink: 0,
+};
+
+const STUDY_TYPE_LABEL: Record<StudyType, string> = {
+  DEGREE: "正規留学",
+  EXCHANGE: "交換留学",
+  LANGUAGE: "語学留学",
 };
 
 function Tooltip({ label, description }: { label: string; description: string }) {
@@ -130,18 +139,11 @@ function RiskCard({ label, level, value }: { label: string; level: number; value
   );
 }
 
-interface SimScenario {
-  id: string;
-  name: string;
-  country: CountryId;
-  duration: number;
-  cityTier: CityTierKey;
-}
-
 interface SimulationViewProps {
   country: CountryId;
   setCountry: (c: CountryId) => void;
   studyType: StudyType;
+  setStudyType: (t: StudyType) => void;
   duration: number;
   setDuration: (d: number) => void;
   fx: Fx;
@@ -156,6 +158,7 @@ export function SimulationView({
   country,
   setCountry,
   studyType,
+  setStudyType,
   duration,
   setDuration,
   fx,
@@ -181,14 +184,60 @@ export function SimulationView({
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
+  const [compareModalOpen, setCompareModalOpen] = useState(false);
+
+  // ─── 家族への共有レポート (premium) ─────────────────────────────────────────
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [shareCopied, setShareCopied] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("uniroute_sim_scenarios", JSON.stringify(scenarios));
   }, [scenarios]);
 
+  function buildShareUrl(): string {
+    const params = new URLSearchParams();
+    params.set("share", "1");
+    params.set("country", country);
+    params.set("studyType", studyType);
+    params.set("duration", String(duration));
+    params.set("cityTier", cityTier);
+    params.set("remit", remitanceMode);
+    params.set("gbp", String(fx.GBP));
+    params.set("usd", String(fx.USD));
+    params.set("aud", String(fx.AUD));
+    params.set("cad", String(fx.CAD));
+    try {
+      const schMonthly = localStorage.getItem("uniroute_scholarship_monthly_jpy");
+      const schLump = localStorage.getItem("uniroute_scholarship_lumpsum_jpy");
+      const schMonths = localStorage.getItem("uniroute_scholarship_coverage_months");
+      if (schMonthly && Number(schMonthly) > 0) params.set("schMonthly", schMonthly);
+      if (schLump && Number(schLump) > 0) params.set("schLump", schLump);
+      if (schMonths && Number(schMonths) > 0) params.set("schMonths", schMonths);
+    } catch {
+      // localStorage が使えない環境では奨学金情報を省略して続行
+    }
+    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  }
+
+  function openShareModal() {
+    setShareUrl(buildShareUrl());
+    setShareCopied(false);
+    setShareModalOpen(true);
+  }
+
+  async function copyShareUrl() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+    } catch {
+      setShareCopied(false);
+    }
+  }
+
   function saveScenario() {
     if (!scenarioName.trim()) return;
-    const s: SimScenario = { id: Date.now().toString(), name: scenarioName.trim(), country, duration, cityTier };
+    const s: SimScenario = { id: Date.now().toString(), name: scenarioName.trim(), country, studyType, duration, cityTier };
     setScenarios((prev) => [...prev, s]);
     setActiveScenarioId(s.id);
     setScenarioName("");
@@ -197,6 +246,7 @@ export function SimulationView({
 
   function loadScenario(s: SimScenario) {
     setCountry(s.country);
+    setStudyType(s.studyType ?? "DEGREE");
     setDuration(s.duration);
     setCityTier(s.cityTier);
     setActiveScenarioId(s.id);
@@ -309,7 +359,7 @@ export function SimulationView({
             >
               {s.name}
               <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>
-                {s.country} · {s.duration}ヶ月
+                {s.country} · {STUDY_TYPE_LABEL[s.studyType ?? "DEGREE"]} · {s.duration}ヶ月
               </span>
               <button
                 onClick={(e) => { e.stopPropagation(); deleteScenario(s.id); }}
@@ -329,6 +379,103 @@ export function SimulationView({
           >
             + 保存
           </button>
+          <button
+            onClick={() => setCompareModalOpen(true)}
+            disabled={scenarios.length < 2}
+            title={scenarios.length < 2 ? "比較するには2件以上シナリオを保存してください" : undefined}
+            style={{
+              padding: "5px 14px", borderRadius: 20,
+              border: "1.5px solid #4f46e5",
+              background: scenarios.length < 2 ? "#eef2ff" : "#4f46e5",
+              color: scenarios.length < 2 ? "#a5b4fc" : "#fff",
+              fontSize: 12, fontWeight: 600,
+              cursor: scenarios.length < 2 ? "not-allowed" : "pointer",
+              opacity: scenarios.length < 2 ? 0.7 : 1,
+            }}
+          >
+            ⇄ 比較する
+          </button>
+          <button
+            onClick={openShareModal}
+            style={{
+              padding: "5px 14px", borderRadius: 20,
+              border: "1.5px solid #1f9268",
+              background: "#fff",
+              color: "#1f9268", fontSize: 12, fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            👪 家族に共有
+          </button>
+        </div>
+      )}
+
+      {/* シナリオ比較モーダル (premium) */}
+      {compareModalOpen && (
+        <ScenarioComparisonTable
+          scenarios={scenarios}
+          fx={fx}
+          onClose={() => setCompareModalOpen(false)}
+        />
+      )}
+
+      {/* 家族への共有レポート モーダル (premium) */}
+      {shareModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(20,29,51,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}
+          onClick={() => setShareModalOpen(false)}
+        >
+          <div
+            style={{ background: "#fff", borderRadius: 14, padding: 28, width: 440, maxWidth: "100%", boxShadow: "0 20px 60px rgba(20,29,51,.3)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>P</span>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#141d33", margin: 0 }}>家族に共有</h3>
+            </div>
+            <p style={{ fontSize: 12, color: "#5e6b86", margin: "0 0 16px", lineHeight: 1.6 }}>
+              このリンクを開くと、今の設定内容が閲覧専用のレポートとして表示されます。ログインは不要です。開いたページから印刷・PDF保存もできるので、親御さんへの説明にそのまま使えます。
+            </p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input
+                type="text"
+                readOnly
+                value={shareUrl}
+                onFocus={(e) => e.target.select()}
+                style={{
+                  flex: 1, padding: "10px 12px", borderRadius: 8,
+                  border: "1.5px solid #c8d9fd", fontSize: 12, color: "#5e6b86",
+                  outline: "none", boxSizing: "border-box", fontFamily: '"IBM Plex Mono", monospace',
+                  background: "#f8faff",
+                }}
+              />
+              <button
+                onClick={copyShareUrl}
+                style={{
+                  padding: "10px 16px", borderRadius: 8, border: "none",
+                  background: shareCopied ? "#16a34a" : "#2f63e6", color: "#fff",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                }}
+              >
+                {shareCopied ? "コピー済み ✓" : "コピー"}
+              </button>
+            </div>
+            <a
+              href={shareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 12, color: "#2f63e6", fontWeight: 600, textDecoration: "none" }}
+            >
+              プレビューを開く（新しいタブ） →
+            </a>
+            <div style={{ marginTop: 20 }}>
+              <button
+                onClick={() => setShareModalOpen(false)}
+                style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1.5px solid #e3e9f5", background: "#f8faff", fontSize: 13, cursor: "pointer", color: "#5e6b86" }}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -344,7 +491,7 @@ export function SimulationView({
           >
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#141d33", margin: "0 0 8px" }}>シナリオを保存</h3>
             <p style={{ fontSize: 12, color: "#5e6b86", margin: "0 0 14px" }}>
-              {COUNTRY_DATA[country].name} · {duration}ヶ月 · {CITY_TIERS[cityTier].label}
+              {COUNTRY_DATA[country].name} · {STUDY_TYPE_LABEL[studyType]} · {duration}ヶ月 · {CITY_TIERS[cityTier].label}
             </p>
             <input
               type="text"
@@ -813,6 +960,12 @@ export function SimulationView({
               </button>
             </div>
           </div>
+
+          {/* 資金ギャップ分析（premium） */}
+          <FundGapAnalysis targetAmountJpy={finalTotalJpy} isPremium={isPremium} />
+
+          {/* 奨学金オフセット計算（premium） */}
+          <ScholarshipOffset targetAmountJpy={finalTotalJpy} durationMonths={duration} isPremium={isPremium} />
 
           {/* Risk indicators — grid breakpoints via CSS (.sim-risk-grid in index.css) */}
           <div className="sim-risk-grid">
