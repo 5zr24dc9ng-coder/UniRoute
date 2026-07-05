@@ -58,6 +58,88 @@ function computeFundsSchedule(applicationDateStr: string) {
   return { applicationDate, depositDeadline, statementWindowStart };
 }
 
+/**
+ * オーストラリア（Subclass 500）：
+ * Genuine Student要件に基づく厳格な審査があり、直前の大口入金は「見せ金」を疑われるリスクがある。
+ * 過去3ヶ月（90日）分の取引明細を求められるケースが多いため、その起点日を資金プール開始の目安とする。
+ */
+function computeAuSchedule(applicationDateStr: string) {
+  const applicationDate = new Date(applicationDateStr + "T00:00:00");
+  const poolStartDate = addDays(applicationDate, -90);
+  return { applicationDate, poolStartDate };
+}
+
+/**
+ * カナダ（Study Permit）：
+ * SDS廃止後の通常審査ルートでは、資金の出所の透明性を示すため過去4〜6ヶ月分の取引履歴が求められることが多い。
+ * 6ヶ月前を推奨開始日、4ヶ月前を最低ラインとして提示する。
+ */
+function computeCaSchedule(applicationDateStr: string) {
+  const applicationDate = new Date(applicationDateStr + "T00:00:00");
+  const recommendedStart = addDays(applicationDate, -180);
+  const minimumStart = addDays(applicationDate, -120);
+  return { applicationDate, recommendedStart, minimumStart };
+}
+
+/** 土日を除いた「営業日」を遡って日付を計算 */
+function subtractBusinessDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  let remaining = days;
+  while (remaining > 0) {
+    d.setDate(d.getDate() - 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) remaining--;
+  }
+  return d;
+}
+
+/**
+ * アメリカ（F-1）：
+ * ①大学のI-20発行デッドライン →②ビザ面接日、の2段階の逆算ゴール。
+ * SEVIS I-901手数料（$350）は面接の少なくとも3営業日前までに独立して支払う必要がある。
+ */
+function computeUsSchedule(i20DeadlineStr: string, interviewDateStr: string) {
+  const i20Deadline = i20DeadlineStr ? new Date(i20DeadlineStr + "T00:00:00") : null;
+  const interviewDate = interviewDateStr ? new Date(interviewDateStr + "T00:00:00") : null;
+  const sevisDeadline = interviewDate ? subtractBusinessDays(interviewDate, 3) : null;
+  return { i20Deadline, interviewDate, sevisDeadline };
+}
+
+const SCHEDULE_HEADER: Record<CountryCodeVisa, { title: string; subtitle: string; lockText: string }> = {
+  UK: {
+    title: "28日ルール：具体的スケジュール",
+    subtitle: "いつまでにいくら口座に入れておくべきか、日付で確認",
+    lockText: "申請予定日から逆算した資金投入期限の表示はプレミアムプランで利用できます",
+  },
+  AU: {
+    title: "資金プール構築カウンター（Genuine Student対策）",
+    subtitle: "「見せ金」と疑われないための資金準備スケジュール",
+    lockText: "申請予定日から逆算した資金プール開始日の表示はプレミアムプランで利用できます",
+  },
+  US: {
+    title: "I-20 & ビザ面接 2段階カウントダウン",
+    subtitle: "I-20発行・ビザ面接・SEVIS手数料までの逆算スケジュール",
+    lockText: "I-20締切や面接日から逆算したスケジュールはプレミアムプランで利用できます",
+  },
+  CA: {
+    title: "資金履歴構築トラッカー（出所証明対策）",
+    subtitle: "取引履歴の透明性を証明するための長期スケジュール",
+    lockText: "渡航予定日から逆算した資金履歴の開始日表示はプレミアムプランで利用できます",
+  },
+};
+
+const AMBER_DATE_INPUT_STYLE: React.CSSProperties = {
+  border: "1.5px solid #f3d9b8",
+  borderRadius: 8,
+  padding: "6px 12px",
+  fontSize: 13,
+  color: "#1c2740",
+  background: "#fffaf3",
+  cursor: "pointer",
+  outline: "none",
+  fontFamily: "inherit",
+};
+
 function DeadlineBadge({ days, label }: { days: number; label: string }) {
   const isOverdue = days < 0;
   const isUrgent = days >= 0 && days <= 14;
@@ -153,14 +235,30 @@ export function VisaView({ isPremium }: VisaViewProps) {
   const [children, setChildren] = useState(0);
   const [ukCity, setUkCity] = useState<UkCity>("LONDON");
 
-  // 28日ルール：ビザ申請予定日（premium, UK限定）
+  // 逆算スケジュール：ビザ申請予定日（premium, UK / AU / CA共通）
   const [applicationDate, setApplicationDate] = useState<string>(() =>
     localStorage.getItem("uniroute_visa_application_date") ?? ""
+  );
+
+  // アメリカ限定：I-20申請デッドライン & ビザ面接予定日（premium）
+  const [i20Deadline, setI20Deadline] = useState<string>(() =>
+    localStorage.getItem("uniroute_us_i20_deadline") ?? ""
+  );
+  const [interviewDate, setInterviewDate] = useState<string>(() =>
+    localStorage.getItem("uniroute_us_interview_date") ?? ""
   );
 
   useEffect(() => {
     if (applicationDate) localStorage.setItem("uniroute_visa_application_date", applicationDate);
   }, [applicationDate]);
+
+  useEffect(() => {
+    if (i20Deadline) localStorage.setItem("uniroute_us_i20_deadline", i20Deadline);
+  }, [i20Deadline]);
+
+  useEffect(() => {
+    if (interviewDate) localStorage.setItem("uniroute_us_interview_date", interviewDate);
+  }, [interviewDate]);
 
   // 未入力なら出国日（TaskViewで保存済みの場合）から30日前を初期候補として提案
   useEffect(() => {
@@ -194,8 +292,20 @@ export function VisaView({ isPremium }: VisaViewProps) {
   const pofSym = DOC_CURRENCY_SYMBOL[proofOfFunds.docCurrency] ?? "";
 
   const fundsSchedule = useMemo(
-    () => (applicationDate ? computeFundsSchedule(applicationDate) : null),
-    [applicationDate]
+    () => (country === "UK" && applicationDate ? computeFundsSchedule(applicationDate) : null),
+    [country, applicationDate]
+  );
+  const auSchedule = useMemo(
+    () => (country === "AU" && applicationDate ? computeAuSchedule(applicationDate) : null),
+    [country, applicationDate]
+  );
+  const caSchedule = useMemo(
+    () => (country === "CA" && applicationDate ? computeCaSchedule(applicationDate) : null),
+    [country, applicationDate]
+  );
+  const usSchedule = useMemo(
+    () => (country === "US" ? computeUsSchedule(i20Deadline, interviewDate) : null),
+    [country, i20Deadline, interviewDate]
   );
 
   const pad = isSmall ? "20px 16px" : "32px 40px";
@@ -591,133 +701,306 @@ export function VisaView({ isPremium }: VisaViewProps) {
         </div>
       </div>
 
-      {/* ─── Section C: 28日ルール 具体的スケジュール（UK限定・premium） ─── */}
-      {country === "UK" && (
-        <div
-          style={{
-            marginTop: 20,
-            background: "#fff",
-            borderRadius: 14,
-            border: "1px solid #e3e9f5",
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ background: "#fff7ed", padding: "16px 24px", borderBottom: "1px solid #e3e9f5" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-              <span
-                style={{
-                  width: 22, height: 22, borderRadius: 6,
-                  background: "#c2792a", color: "#fff",
-                  fontSize: 11, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                C
-              </span>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#c2792a", margin: 0 }}>
-                28日ルール：具体的スケジュール
-              </p>
-              <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>P</span>
-            </div>
-            <p style={{ fontSize: 11, color: "#8899bb", margin: 0 }}>
-              いつまでにいくら口座に入れておくべきか、日付で確認
+      {/* ─── Section C: 資金・書類スケジュール 逆算カウンター（国別・premium） ─── */}
+      <div
+        style={{
+          marginTop: 20,
+          background: "#fff",
+          borderRadius: 14,
+          border: "1px solid #e3e9f5",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ background: "#fff7ed", padding: "16px 24px", borderBottom: "1px solid #e3e9f5" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
+            <span
+              style={{
+                width: 22, height: 22, borderRadius: 6,
+                background: "#c2792a", color: "#fff",
+                fontSize: 11, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              C
+            </span>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "#c2792a", margin: 0 }}>
+              {SCHEDULE_HEADER[country].title}
             </p>
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>P</span>
           </div>
+          <p style={{ fontSize: 11, color: "#8899bb", margin: 0 }}>
+            {SCHEDULE_HEADER[country].subtitle}
+          </p>
+        </div>
 
-          <div style={{ padding: "20px 24px" }}>
-            {!isPremium ? (
-              <PremiumLockBanner text="申請予定日から逆算した資金投入期限の表示はプレミアムプランで利用できます" />
-            ) : (
-              <>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    flexWrap: "wrap",
-                    marginBottom: 18,
-                  }}
-                >
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740", flexShrink: 0 }}>
-                    🗓️ ビザ申請予定日
-                  </span>
-                  <input
-                    type="date"
-                    value={applicationDate}
-                    onChange={(e) => setApplicationDate(e.target.value)}
-                    style={{
-                      border: "1.5px solid #f3d9b8",
-                      borderRadius: 8,
-                      padding: "6px 12px",
-                      fontSize: 13,
-                      color: "#1c2740",
-                      background: "#fffaf3",
-                      cursor: "pointer",
-                      outline: "none",
-                      fontFamily: "inherit",
-                    }}
-                  />
-                  {!applicationDate && (
-                    <span style={{ fontSize: 12, color: "#8899bb" }}>
-                      日付を入力するとスケジュールが表示されます
+        <div style={{ padding: "20px 24px" }}>
+          {!isPremium ? (
+            <PremiumLockBanner text={SCHEDULE_HEADER[country].lockText} />
+          ) : (
+            <>
+              {/* ── UK: 28日ルール ── */}
+              {country === "UK" && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740", flexShrink: 0 }}>
+                      🗓️ ビザ申請予定日
                     </span>
-                  )}
-                </div>
+                    <input
+                      type="date"
+                      value={applicationDate}
+                      onChange={(e) => setApplicationDate(e.target.value)}
+                      style={AMBER_DATE_INPUT_STYLE}
+                    />
+                    {!applicationDate && (
+                      <span style={{ fontSize: 12, color: "#8899bb" }}>日付を入力するとスケジュールが表示されます</span>
+                    )}
+                  </div>
 
-                {fundsSchedule && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {/* 資金投入期限 */}
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 8,
-                        background: "#fffaf3",
-                        borderRadius: 10,
-                        padding: "14px 16px",
-                        border: "1px solid #f3d9b8",
-                      }}
-                    >
-                      <div>
-                        <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 4px" }}>
-                          この日までに £{fmt(proofOfFunds.requiredFundsInDocCurrency)} 以上を口座に入金
+                  {fundsSchedule && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div
+                        style={{
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                          flexWrap: "wrap", gap: 8, background: "#fffaf3", borderRadius: 10,
+                          padding: "14px 16px", border: "1px solid #f3d9b8",
+                        }}
+                      >
+                        <div>
+                          <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 4px" }}>
+                            この日までに £{fmt(proofOfFunds.requiredFundsInDocCurrency)} 以上を口座に入金
+                          </p>
+                          <p style={{ fontSize: 18, fontWeight: 700, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                            {formatDateJp(fundsSchedule.depositDeadline)}
+                          </p>
+                        </div>
+                        <DeadlineBadge days={daysUntil(fundsSchedule.depositDeadline)} label="入金期限" />
+                      </div>
+
+                      <div style={{ background: "#f8faff", borderRadius: 10, padding: "14px 16px" }}>
+                        <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 6px" }}>
+                          残高証明書として使える対象日の範囲
                         </p>
-                        <p style={{ fontSize: 18, fontWeight: 700, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
-                          {formatDateJp(fundsSchedule.depositDeadline)}
+                        <p style={{ fontSize: 14, fontWeight: 600, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                          {formatDateJp(fundsSchedule.statementWindowStart)} 〜 {formatDateJp(fundsSchedule.applicationDate)}
                         </p>
                       </div>
-                      <DeadlineBadge days={daysUntil(fundsSchedule.depositDeadline)} label="入金期限" />
-                    </div>
 
-                    {/* 残高証明書の有効期間 */}
-                    <div
-                      style={{
-                        background: "#f8faff",
-                        borderRadius: 10,
-                        padding: "14px 16px",
-                      }}
-                    >
-                      <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 6px" }}>
-                        残高証明書として使える対象日の範囲
-                      </p>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
-                        {formatDateJp(fundsSchedule.statementWindowStart)} 〜 {formatDateJp(fundsSchedule.applicationDate)}
+                      <p style={{ fontSize: 11, color: "#8899bb", margin: 0, lineHeight: 1.7 }}>
+                        ※ UKVIの28日ルール：残高証明書の対象日（残高の記載日）から遡って28日間、必要額以上を口座に維持している必要があります。さらにその対象日は、ビザ申請日から遡って31日以内でなければなりません。上記は最も安全な「対象日＝申請日」で計算した最終期限です。銀行の処理日数を考慮し、数日〜1週間の余裕を持たせることをおすすめします。
                       </p>
                     </div>
+                  )}
+                </>
+              )}
 
-                    <p style={{ fontSize: 11, color: "#8899bb", margin: 0, lineHeight: 1.7 }}>
-                      ※ UKVIの28日ルール：残高証明書の対象日（残高の記載日）から遡って28日間、必要額以上を口座に維持している必要があります。さらにその対象日は、ビザ申請日から遡って31日以内でなければなりません。上記は最も安全な「対象日＝申請日」で計算した最終期限です。銀行の処理日数を考慮し、数日〜1週間の余裕を持たせることをおすすめします。
-                    </p>
+              {/* ── AU: Genuine Student対策 資金プールカウンター ── */}
+              {country === "AU" && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740", flexShrink: 0 }}>
+                      🗓️ ビザ申請予定日
+                    </span>
+                    <input
+                      type="date"
+                      value={applicationDate}
+                      onChange={(e) => setApplicationDate(e.target.value)}
+                      style={AMBER_DATE_INPUT_STYLE}
+                    />
+                    {!applicationDate && (
+                      <span style={{ fontSize: 12, color: "#8899bb" }}>日付を入力するとスケジュールが表示されます</span>
+                    )}
                   </div>
-                )}
-              </>
-            )}
-          </div>
+
+                  {auSchedule && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div
+                        style={{
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                          flexWrap: "wrap", gap: 8, background: "#fffaf3", borderRadius: 10,
+                          padding: "14px 16px", border: "1px solid #f3d9b8",
+                        }}
+                      >
+                        <div>
+                          <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 4px" }}>
+                            この日までに基本となる資金（目安 A${fmt(proofOfFunds.requiredFundsInDocCurrency)}）を口座に入金
+                          </p>
+                          <p style={{ fontSize: 18, fontWeight: 700, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                            {formatDateJp(auSchedule.poolStartDate)}
+                          </p>
+                        </div>
+                        <DeadlineBadge days={daysUntil(auSchedule.poolStartDate)} label="資金プール開始期限" />
+                      </div>
+
+                      <p style={{ fontSize: 11, color: "#8899bb", margin: 0, lineHeight: 1.7 }}>
+                        ※ オーストラリアはGenuine Student要件に基づく厳格な審査があり、直前の大口入金は「見せ金」を疑われるリスクがあります。過去3ヶ月分の銀行取引明細の提出を求められるケースが多いため、上記の日付までに資金を入れ、それ以降は不自然な大口入金を避けて口座残高を安定させてください。
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── CA: 資金履歴構築トラッカー ── */}
+              {country === "CA" && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740", flexShrink: 0 }}>
+                      🗓️ ビザ申請予定日
+                    </span>
+                    <input
+                      type="date"
+                      value={applicationDate}
+                      onChange={(e) => setApplicationDate(e.target.value)}
+                      style={AMBER_DATE_INPUT_STYLE}
+                    />
+                    {!applicationDate && (
+                      <span style={{ fontSize: 12, color: "#8899bb" }}>日付を入力するとスケジュールが表示されます</span>
+                    )}
+                  </div>
+
+                  {caSchedule && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div
+                        style={{
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                          flexWrap: "wrap", gap: 8, background: "#fffaf3", borderRadius: 10,
+                          padding: "14px 16px", border: "1px solid #f3d9b8",
+                        }}
+                      >
+                        <div>
+                          <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 4px" }}>
+                            資金の出入りを記録に残し始める推奨開始日（6ヶ月前）
+                          </p>
+                          <p style={{ fontSize: 18, fontWeight: 700, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                            {formatDateJp(caSchedule.recommendedStart)}
+                          </p>
+                        </div>
+                        <DeadlineBadge days={daysUntil(caSchedule.recommendedStart)} label="履歴構築 推奨開始" />
+                      </div>
+
+                      <div style={{ background: "#f8faff", borderRadius: 10, padding: "14px 16px" }}>
+                        <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 6px" }}>
+                          最低ライン（4ヶ月前）
+                        </p>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                          {formatDateJp(caSchedule.minimumStart)}
+                        </p>
+                      </div>
+
+                      <p style={{ fontSize: 11, color: "#8899bb", margin: 0, lineHeight: 1.7 }}>
+                        ※ 2024年11月のSDS（Student Direct Stream）廃止に伴い、通常審査ルートでは資金の出所の透明性を示すため過去4〜6ヶ月分の取引明細が求められることが多くなっています。急な大口入金ではなく、日常的な入出金の履歴として残しておくことが重要です。
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── US: I-20 & ビザ面接 2段階カウントダウン ── */}
+              {country === "US" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740", flexShrink: 0, minWidth: 170 }}>
+                        🎓 大学のI-20申請デッドライン
+                      </span>
+                      <input
+                        type="date"
+                        value={i20Deadline}
+                        onChange={(e) => setI20Deadline(e.target.value)}
+                        style={AMBER_DATE_INPUT_STYLE}
+                      />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740", flexShrink: 0, minWidth: 170 }}>
+                        🛂 ビザ面接予定日
+                      </span>
+                      <input
+                        type="date"
+                        value={interviewDate}
+                        onChange={(e) => setInterviewDate(e.target.value)}
+                        style={AMBER_DATE_INPUT_STYLE}
+                      />
+                    </div>
+                    {!i20Deadline && !interviewDate && (
+                      <span style={{ fontSize: 12, color: "#8899bb" }}>
+                        日付を入力するとスケジュールが表示されます
+                      </span>
+                    )}
+                  </div>
+
+                  {(usSchedule?.i20Deadline || usSchedule?.interviewDate || usSchedule?.sevisDeadline) && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {usSchedule?.i20Deadline && (
+                        <div
+                          style={{
+                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                            flexWrap: "wrap", gap: 8, background: "#fffaf3", borderRadius: 10,
+                            padding: "14px 16px", border: "1px solid #f3d9b8",
+                          }}
+                        >
+                          <div>
+                            <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 4px" }}>
+                              ステージ1：I-20発行に向けた残高証明の提出期限（目安 US${fmt(proofOfFunds.requiredFundsInDocCurrency)}）
+                            </p>
+                            <p style={{ fontSize: 18, fontWeight: 700, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                              {formatDateJp(usSchedule.i20Deadline)}
+                            </p>
+                          </div>
+                          <DeadlineBadge days={daysUntil(usSchedule.i20Deadline)} label="I-20締切" />
+                        </div>
+                      )}
+
+                      {usSchedule?.interviewDate && (
+                        <div
+                          style={{
+                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                            flexWrap: "wrap", gap: 8, background: "#f8faff", borderRadius: 10,
+                            padding: "14px 16px",
+                          }}
+                        >
+                          <div>
+                            <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 4px" }}>
+                              ステージ2：ビザ面接予定日
+                            </p>
+                            <p style={{ fontSize: 18, fontWeight: 700, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                              {formatDateJp(usSchedule.interviewDate)}
+                            </p>
+                          </div>
+                          <DeadlineBadge days={daysUntil(usSchedule.interviewDate)} label="面接日" />
+                        </div>
+                      )}
+
+                      {usSchedule?.sevisDeadline && (
+                        <div
+                          style={{
+                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                            flexWrap: "wrap", gap: 8, background: "#fffaf3", borderRadius: 10,
+                            padding: "14px 16px", border: "1px solid #f3d9b8",
+                          }}
+                        >
+                          <div>
+                            <p style={{ fontSize: 12, color: "#8899bb", margin: "0 0 4px" }}>
+                              SEVIS I-901手数料（US$350）の支払い期限（面接3営業日前まで）
+                            </p>
+                            <p style={{ fontSize: 18, fontWeight: 700, color: "#1c2740", margin: 0, fontFamily: '"IBM Plex Mono", monospace' }}>
+                              {formatDateJp(usSchedule.sevisDeadline)}
+                            </p>
+                          </div>
+                          <DeadlineBadge days={daysUntil(usSchedule.sevisDeadline)} label="SEVIS支払期限" />
+                        </div>
+                      )}
+
+                      <p style={{ fontSize: 11, color: "#8899bb", margin: 0, lineHeight: 1.7 }}>
+                        ※ SEVIS I-901手数料は独立した決済プロセスで、ビザ面接の少なくとも3営業日前までに支払いが必要です（実務上は面接予約前に支払っておくのが一般的です）。I-20はまず大学へ財政証明を提出して発行してもらう必要があり、大学ごとに提出期限が異なるため、必ず担当窓口の指示を確認してください。
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
