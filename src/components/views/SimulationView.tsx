@@ -55,37 +55,54 @@ function CostDonutChart({
   const size = 160;
   const strokeWidth = 26;
   const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  let cumulative = 0;
+  const cx = size / 2;
+  const cy = size / 2;
   const visibleItems = items.filter((item) => item.value > 0);
+
+  // 12時位置(-90deg)を起点に、各項目のpctから弧の開始・終了角度を算出する。
+  // 以前はstroke-dasharray/-dashoffsetを使い5つの円を重ねて描画していたが、
+  // 各circle要素ごとに独立してdash長を計算するため浮動小数点誤差が蓄積し、
+  // 12時位置（最後の項目と最初の項目のつなぎ目）にわずかな隙間/重なりが visualに
+  // 現れるバグがあった。角度ベースのパス（弧）で1本ずつ描く方式に変更し解消する。
+  let cumulativeAngle = -90;
+  const arcs = visibleItems.map((item) => {
+    const startAngle = cumulativeAngle;
+    const endAngle = startAngle + item.pct * 360;
+    cumulativeAngle = endAngle;
+    return { item, startAngle, endAngle };
+  });
+
+  function pointOnCircle(angleDeg: number) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
+  }
 
   return (
     <div style={{ display: "flex", justifyContent: "center", position: "relative", marginBottom: 18 }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#f0f4ff" strokeWidth={strokeWidth} />
-          {visibleItems.map((item) => {
-            const dash = item.pct * circumference;
-            const dashArray = `${dash} ${circumference - dash}`;
-            const dashOffset = -cumulative;
-            cumulative += dash;
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#f0f4ff" strokeWidth={strokeWidth} />
+        {arcs.length === 1 ? (
+          <circle cx={cx} cy={cy} r={radius} fill="none" stroke={arcs[0].item.color} strokeWidth={strokeWidth}>
+            <title>{`${arcs[0].item.label}: 100%`}</title>
+          </circle>
+        ) : (
+          arcs.map(({ item, startAngle, endAngle }) => {
+            const start = pointOnCircle(startAngle);
+            const end = pointOnCircle(endAngle);
+            const largeArc = endAngle - startAngle > 180 ? 1 : 0;
             return (
-              <circle
+              <path
                 key={item.key}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
+                d={`M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`}
                 fill="none"
                 stroke={item.color}
                 strokeWidth={strokeWidth}
-                strokeDasharray={dashArray}
-                strokeDashoffset={dashOffset}
               >
                 <title>{`${item.label}: ${Math.round(item.pct * 100)}%`}</title>
-              </circle>
+              </path>
             );
-          })}
-        </g>
+          })
+        )}
       </svg>
       <div
         style={{
