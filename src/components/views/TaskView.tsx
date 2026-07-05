@@ -166,7 +166,10 @@ function PremiumLockBanner() {
     >
       <span style={{ fontSize: 16 }}>🔒</span>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#4338ca" }}>プレミアム機能</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em" }}>P</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#4338ca" }}>プレミアム機能</span>
+        </div>
         <div style={{ fontSize: 12, color: "#6366f1", marginTop: 2 }}>出国日カウントダウンはプレミアムプランで利用できます</div>
       </div>
     </div>
@@ -331,6 +334,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
             }}
           >
             <span style={{ fontSize: 13, fontWeight: 600, color: "#1c2740", flexShrink: 0 }}>✈️ 出国日</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em", flexShrink: 0 }}>P</span>
             <input
               type="date"
               value={departureDate}

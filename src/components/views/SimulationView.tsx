@@ -292,6 +292,7 @@ export function SimulationView({
       {/* ─── シナリオバー (premium) ─────────────────────────────────────── */}
       {isPremium && (
         <div style={{ marginBottom: 22, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#4f46e5", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.04em", flexShrink: 0 }}>P</span>
           {scenarios.map((s) => (
             <div
               key={s.id}
