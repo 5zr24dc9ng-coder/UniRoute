@@ -68,6 +68,11 @@ interface TaskCardProps {
   onToggleExpand: () => void;
   onToggleComplete: () => void;
   isCustom?: boolean;
+  editable?: boolean;
+  onEditCustom?: () => void;
+  onDeleteCustom?: () => void;
+  onDragHandleStart?: () => void;
+  onDragHandleEnd?: () => void;
 }
 
 function TaskCard({
@@ -77,6 +82,11 @@ function TaskCard({
   onToggleExpand,
   onToggleComplete,
   isCustom = false,
+  editable = false,
+  onEditCustom,
+  onDeleteCustom,
+  onDragHandleStart,
+  onDragHandleEnd,
 }: TaskCardProps) {
   return (
     <div
@@ -93,6 +103,19 @@ function TaskCard({
       <div
         style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px" }}
       >
+        {/* ドラッグハンドル（並び替え用） */}
+        {editable && (
+          <div
+            draggable
+            onDragStart={(e) => { e.stopPropagation(); onDragHandleStart?.(); }}
+            onDragEnd={() => onDragHandleEnd?.()}
+            title="ドラッグして並び替え"
+            style={{ cursor: "grab", color: "#b8c2d9", fontSize: 14, flexShrink: 0, lineHeight: 1, userSelect: "none" }}
+          >
+            ≡
+          </div>
+        )}
+
         {/* チェックボックス */}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleComplete(); }}
@@ -196,6 +219,22 @@ function TaskCard({
               ))}
             </div>
           )}
+          {isCustom && editable && (
+            <div style={{ display: "flex", gap: 10, marginTop: 12, paddingTop: 10, borderTop: "1px solid #d4e4fd" }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditCustom?.(); }}
+                style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "#2f63e6", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
+              >
+                ✎ 編集
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeleteCustom?.(); }}
+                style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "#cf4a4a", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
+              >
+                🗑 削除
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -250,18 +289,27 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     localStorage.getItem("uniroute_departure_date") ?? ""
   );
 
-  // タスク編集 (premium): カスタムタスクは国×留学タイプごとに保存
+  // タスク編集 (premium): カスタムタスク・並び順 は国×留学タイプごとに保存
   const [customTasksMap, setCustomTasksMap] = useState<Record<string, TaskMaster[]>>(() => {
     try { return JSON.parse(localStorage.getItem("uniroute_custom_tasks") ?? "{}"); }
     catch { return {}; }
   });
+  const [orderMap, setOrderMap] = useState<Record<string, Record<string, string[]>>>(() => {
+    try { return JSON.parse(localStorage.getItem("uniroute_task_order") ?? "{}"); }
+    catch { return {}; }
+  });
 
   const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskTiming, setNewTaskTiming] = useState("");
   const [useCustomTiming, setUseCustomTiming] = useState(false);
   const [newTaskTimingCustom, setNewTaskTimingCustom] = useState("");
+
+  // ドラッグ中のタスクID・グループ（並び替え用）
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [draggedTiming, setDraggedTiming] = useState<string | null>(null);
 
   // persistences
   useEffect(() => {
@@ -276,6 +324,10 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     localStorage.setItem("uniroute_custom_tasks", JSON.stringify(customTasksMap));
   }, [customTasksMap]);
 
+  useEffect(() => {
+    localStorage.setItem("uniroute_task_order", JSON.stringify(orderMap));
+  }, [orderMap]);
+
 
   const countryName = COUNTRY_DATA[selectedCountry].name;
   const studyTypeLabel = { DEGREE: "正規留学", EXCHANGE: "交換留学", LANGUAGE: "語学留学" }[studyType];
@@ -284,6 +336,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
   // 現在の国×留学タイプの組み合わせキー
   const comboKey = `${selectedCountry}_${studyType}`;
   const customTasks = customTasksMap[comboKey] ?? [];
+  const groupOrder = orderMap[comboKey] ?? {};
 
   // デフォルトタスク＋カスタムタスクを結合
   const visibleTasks = [...masterTasks, ...customTasks];
@@ -300,6 +353,18 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     else acc.push({ timing: task.timing, tasks: [task] });
     return acc;
   }, []);
+
+  // タイミンググループごとに、ユーザーがドラッグで並び替えた順序があれば適用（未知のIDは末尾に自然な順で追加）
+  grouped.forEach((g) => {
+    const manual = groupOrder[g.timing];
+    if (!manual || manual.length === 0) return;
+    const manualIndex = new Map(manual.map((id, i) => [id, i]));
+    const known = g.tasks.filter((t) => manualIndex.has(t.id)).sort(
+      (a, b) => manualIndex.get(a.id)! - manualIndex.get(b.id)!
+    );
+    const unknown = g.tasks.filter((t) => !manualIndex.has(t.id));
+    g.tasks = [...known, ...unknown];
+  });
 
   const existingTimings = grouped.map((g) => g.timing);
 
@@ -318,27 +383,99 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     });
   }
 
-  function addCustomTask() {
-    const timing = useCustomTiming ? newTaskTimingCustom.trim() : newTaskTiming;
-    if (!newTaskTitle.trim() || !timing) return;
-    const task: TaskMaster = {
-      id: `custom-${Date.now()}`,
-      countries: [selectedCountry],
-      types: [studyType],
-      title: newTaskTitle.trim(),
-      description: newTaskDescription.trim(),
-      timing,
-    };
-    setCustomTasksMap((prev) => ({
-      ...prev,
-      [comboKey]: [...(prev[comboKey] ?? []), task],
-    }));
+  function resetTaskForm() {
     setNewTaskTitle("");
     setNewTaskDescription("");
     setNewTaskTiming("");
     setNewTaskTimingCustom("");
     setUseCustomTiming(false);
+    setEditingTaskId(null);
+  }
+
+  function openAddModal() {
+    resetTaskForm();
+    setAddTaskModalOpen(true);
+  }
+
+  function openEditModal(task: TaskMaster) {
+    setEditingTaskId(task.id);
+    setNewTaskTitle(task.title);
+    setNewTaskDescription(task.description);
+    if (existingTimings.includes(task.timing)) {
+      setUseCustomTiming(false);
+      setNewTaskTiming(task.timing);
+      setNewTaskTimingCustom("");
+    } else {
+      setUseCustomTiming(true);
+      setNewTaskTimingCustom(task.timing);
+      setNewTaskTiming("");
+    }
+    setAddTaskModalOpen(true);
+  }
+
+  function closeTaskModal() {
     setAddTaskModalOpen(false);
+    resetTaskForm();
+  }
+
+  function saveCustomTask() {
+    const timing = useCustomTiming ? newTaskTimingCustom.trim() : newTaskTiming;
+    if (!newTaskTitle.trim() || !timing) return;
+
+    if (editingTaskId) {
+      setCustomTasksMap((prev) => ({
+        ...prev,
+        [comboKey]: (prev[comboKey] ?? []).map((t) =>
+          t.id === editingTaskId
+            ? { ...t, title: newTaskTitle.trim(), description: newTaskDescription.trim(), timing }
+            : t
+        ),
+      }));
+    } else {
+      const task: TaskMaster = {
+        id: `custom-${Date.now()}`,
+        countries: [selectedCountry],
+        types: [studyType],
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim(),
+        timing,
+      };
+      setCustomTasksMap((prev) => ({
+        ...prev,
+        [comboKey]: [...(prev[comboKey] ?? []), task],
+      }));
+    }
+    resetTaskForm();
+    setAddTaskModalOpen(false);
+  }
+
+  function deleteCustomTask(id: string) {
+    setCustomTasksMap((prev) => ({
+      ...prev,
+      [comboKey]: (prev[comboKey] ?? []).filter((t) => t.id !== id),
+    }));
+  }
+
+  function handleDropOnTask(timing: string, targetTaskId: string) {
+    if (!draggedTaskId || draggedTiming !== timing || draggedTaskId === targetTaskId) {
+      setDraggedTaskId(null);
+      setDraggedTiming(null);
+      return;
+    }
+    const group = grouped.find((g) => g.timing === timing);
+    if (!group) return;
+    const ids = group.tasks.map((t) => t.id);
+    const fromIdx = ids.indexOf(draggedTaskId);
+    const toIdx = ids.indexOf(targetTaskId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    ids.splice(fromIdx, 1);
+    ids.splice(toIdx, 0, draggedTaskId);
+    setOrderMap((prev) => ({
+      ...prev,
+      [comboKey]: { ...(prev[comboKey] ?? {}), [timing]: ids },
+    }));
+    setDraggedTaskId(null);
+    setDraggedTiming(null);
   }
 
   return (
@@ -490,7 +627,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
           {/* タスク編集：カスタムタスク追加 */}
           <div>
             <button
-              onClick={() => setAddTaskModalOpen(true)}
+              onClick={openAddModal}
               style={{
                 padding: "8px 16px",
                 borderRadius: 8,
@@ -512,13 +649,15 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
       {addTaskModalOpen && (
         <div
           style={{ position: "fixed", inset: 0, background: "rgba(20,29,51,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}
-          onClick={() => setAddTaskModalOpen(false)}
+          onClick={closeTaskModal}
         >
           <div
             style={{ background: "#fff", borderRadius: 14, padding: 28, width: 380, maxWidth: "100%", boxShadow: "0 20px 60px rgba(20,29,51,.3)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#141d33", margin: "0 0 14px" }}>カスタムタスクを追加</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#141d33", margin: "0 0 14px" }}>
+              {editingTaskId ? "カスタムタスクを編集" : "カスタムタスクを追加"}
+            </h3>
 
             <p style={{ fontSize: 11, color: "#8899bb", margin: "0 0 6px" }}>タスク名</p>
             <input
@@ -599,13 +738,13 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
 
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <button
-                onClick={() => setAddTaskModalOpen(false)}
+                onClick={closeTaskModal}
                 style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1.5px solid #e3e9f5", background: "#f8faff", fontSize: 13, cursor: "pointer", color: "#5e6b86" }}
               >
                 キャンセル
               </button>
               <button
-                onClick={addCustomTask}
+                onClick={saveCustomTask}
                 disabled={!newTaskTitle.trim() || !(useCustomTiming ? newTaskTimingCustom.trim() : newTaskTiming)}
                 style={{
                   flex: 1, padding: "10px", borderRadius: 8, border: "none",
@@ -615,7 +754,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
                   cursor: newTaskTitle.trim() && (useCustomTiming ? newTaskTimingCustom.trim() : newTaskTiming) ? "pointer" : "not-allowed",
                 }}
               >
-                追加
+                {editingTaskId ? "保存" : "追加"}
               </button>
             </div>
           </div>
@@ -680,6 +819,8 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
                 {tasks.map((task) => (
                   <div
                     key={task.id}
+                    onDragOver={(e) => { if (draggedTaskId) e.preventDefault(); }}
+                    onDrop={(e) => { e.preventDefault(); handleDropOnTask(timing, task.id); }}
                     style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}
                   >
                     <div
@@ -704,6 +845,11 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
                         onToggleExpand={() => setExpandedId((prev) => (prev === task.id ? null : task.id))}
                         onToggleComplete={() => toggleComplete(task.id)}
                         isCustom={customTasks.some((t) => t.id === task.id)}
+                        editable={isPremium}
+                        onEditCustom={() => openEditModal(task)}
+                        onDeleteCustom={() => deleteCustomTask(task.id)}
+                        onDragHandleStart={() => { setDraggedTaskId(task.id); setDraggedTiming(timing); }}
+                        onDragHandleEnd={() => { setDraggedTaskId(null); setDraggedTiming(null); }}
                       />
                     </div>
                   </div>
