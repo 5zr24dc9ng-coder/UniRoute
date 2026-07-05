@@ -10,6 +10,7 @@ import { ComparisonView } from "./components/views/ComparisonView";
 import { TaskView } from "./components/views/TaskView";
 import { VisaView } from "./components/views/VisaView";
 import { ShareReportView } from "./components/views/ShareReportView";
+import { PremiumUpgradeModal } from "./components/PremiumUpgradeModal";
 import type { CityTierKey, CountryId, StudyType, ViewId } from "./types";
 
 function LegalModal({ onAgree }: { onAgree: () => void }) {
@@ -83,6 +84,7 @@ export default function App() {
   const { fx, setFx, lastUpdated } = useLiveFx();
   const [cityTier, setCityTier] = useState<CityTierKey>("capital");
   const [isPremium, setIsPremium] = useState(false);
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
   const w = useWindowWidth();
   const isSmall = w < 1024;
 
@@ -195,6 +197,32 @@ export default function App() {
         </main>
         <Footer isSmall={isSmall} />
       </div>
+      {/* プレミアムアップグレードモーダル（開発中のため ?admin=true のセッションでのみ起動可能） */}
+      {isPremium && (
+        <button
+          onClick={() => setPremiumModalOpen(true)}
+          style={{
+            position: "fixed",
+            bottom: 16,
+            left: 16,
+            zIndex: 9998,
+            padding: "6px 12px",
+            borderRadius: 8,
+            border: "1.5px dashed #a5b4fc",
+            background: "#eef2ff",
+            color: "#4338ca",
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          🔧 プレミアムモーダル（開発用プレビュー）
+        </button>
+      )}
+      {isPremium && premiumModalOpen && (
+        <PremiumUpgradeModal onClose={() => setPremiumModalOpen(false)} />
+      )}
+
       {/* Vercel Analytics の計測タグ — ignore_analytics が true なら除外 */}
       <Analytics
         beforeSend={(event) => {

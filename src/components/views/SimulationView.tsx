@@ -845,8 +845,9 @@ export function SimulationView({
               </div>
             </div>
 
-            {/* 内訳の円グラフ */}
-            <CostDonutChart items={costs.items} centerLabel="推定総額" centerValue={`¥${finalTotalJpy.toLocaleString()}`} />
+            {/* 内訳の円グラフ — リングは costs.items（内訳5項目）の合計に対する割合のため、
+                中央表示も同じ costs.totalJPY を使う（送金手数料込みの finalTotalJpy を出すとリングと数字が一致しなくなる） */}
+            <CostDonutChart items={costs.items} centerLabel="内訳合計" centerValue={`¥${costs.totalJPY.toLocaleString()}`} />
 
 
             {/* Breakdown rows with accordion */}
