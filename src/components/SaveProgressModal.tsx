@@ -5,9 +5,9 @@ interface SaveProgressModalProps {
 }
 
 const RISKS = [
-  { icon: "🔄", text: "端末の機種変更・買い替え" },
-  { icon: "🧹", text: "ブラウザのキャッシュ・履歴の削除" },
-  { icon: "🌐", text: "別のブラウザ・別の端末からアクセス" },
+  { text: "端末の機種変更・買い替え" },
+  { text: "ブラウザのキャッシュ・履歴の削除" },
+  { text: "別のブラウザ・別の端末からアクセス" },
 ];
 
 export function SaveProgressModal({ onClose }: SaveProgressModalProps) {
@@ -64,7 +64,6 @@ export function SaveProgressModal({ onClose }: SaveProgressModalProps) {
                 padding: "10px 14px",
               }}
             >
-              <span style={{ fontSize: 16 }}>{r.icon}</span>
               <span style={{ fontSize: 13, color: "#1c2740" }}>{r.text}</span>
             </div>
           ))}

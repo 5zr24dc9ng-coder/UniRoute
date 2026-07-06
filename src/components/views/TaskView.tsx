@@ -279,7 +279,7 @@ function SaveProgressBadge({ completedCount, onClick }: { completedCount: number
         transition: "all 0.2s ease",
       }}
     >
-      {isReady ? "💾 他の端末でも使えるようにする" : "この端末のみ"}
+      {isReady ? "他の端末でも使えるようにする" : "この端末のみ"}
     </span>
   );
 }
