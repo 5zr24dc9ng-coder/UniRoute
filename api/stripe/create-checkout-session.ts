@@ -35,11 +35,20 @@ export default async function handler(req: any, res: any): Promise<void> {
     return;
   }
 
-  const { data: verified, errors } = await verifyToken(token, { secretKey: clerkSecretKey });
-  if (errors || !verified) {
-    console.error("🚨 セッション検証エラー:", errors);
+  let verified;
+  try {
+    const result = await verifyToken(token, { secretKey: clerkSecretKey });
+    console.log("🔍 DEBUG verify result:", JSON.stringify(result));
+    if (result.errors || !result.data) {
+      res.statusCode = 401;
+      res.end(JSON.stringify({ error: "invalid-session", detail: JSON.stringify(result.errors) }));
+      return;
+    }
+    verified = result.data;
+  } catch (err) {
+    console.error("🚨 セッション検証で例外:", err);
     res.statusCode = 401;
-    res.end(JSON.stringify({ error: "invalid-session" }));
+    res.end(JSON.stringify({ error: "invalid-session", detail: err instanceof Error ? err.message : String(err) }));
     return;
   }
 
