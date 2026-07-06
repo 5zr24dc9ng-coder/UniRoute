@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { useWindowWidth } from "./hooks/useWindowWidth";
 import { useLiveFx } from "./hooks/useLiveFx";
 import { useCloudColumn } from "./hooks/useCloudColumn";
+import { useSupabase } from "./hooks/useSupabase";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
@@ -93,14 +94,39 @@ export default function App() {
   const { fx, setFx, lastUpdated } = useLiveFx();
   const [cityTier, setCityTier] = useState<CityTierKey>("capital");
   const [isPremium, setIsPremium] = useState(false);
+  const [purchasedPremium, setPurchasedPremium] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
   const w = useWindowWidth();
   const isSmall = w < 1024;
 
   // ログイン中ユーザーのシミュレーション設定をSupabaseと同期する（未ログイン時は何もしない）
   const { user } = useUser();
+  const supabase = useSupabase();
   const { cloudValue, loaded, saveCloudValue } = useCloudColumn<SimulationCloudState>("simulation_state");
   const appliedCloudForUserRef = useRef<string | null>(null);
+
+  // ログイン中ユーザーが実際にプレミアムを購入済みか（Stripe Webhook経由でSupabaseのis_premiumが更新される）
+  useEffect(() => {
+    if (!supabase || !user) {
+      setPurchasedPremium(false);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("users")
+      .select("is_premium")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled) setPurchasedPremium(Boolean(data?.is_premium));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user]);
+
+  // 開発用の?admin=trueフラグ、または実際の購入済みプレミアムのどちらかで機能を解放する
+  const premiumUnlocked = isPremium || purchasedPremium;
 
   // 初期化時 localStorage をチェック
   useEffect(() => {
@@ -221,12 +247,12 @@ export default function App() {
               cityTier={cityTier}
               setCityTier={setCityTier}
               lastUpdated={lastUpdated}
-              isPremium={isPremium}
+              isPremium={premiumUnlocked}
             />
           )}
           {view === "matrix" && <ComparisonView fx={fx} studyType={studyType} />}
-          {view === "tasks" && <TaskView country={country} studyType={studyType} isPremium={isPremium} />}
-          {view === "visa" && <VisaView isPremium={isPremium} />}
+          {view === "tasks" && <TaskView country={country} studyType={studyType} isPremium={premiumUnlocked} />}
+          {view === "visa" && <VisaView isPremium={premiumUnlocked} />}
         </main>
         <Footer isSmall={isSmall} />
       </div>
