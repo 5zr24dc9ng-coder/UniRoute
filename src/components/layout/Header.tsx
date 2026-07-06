@@ -1,3 +1,4 @@
+import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
 import { SvgIcon } from "../ui/SvgIcon";
 import type { Fx, StudyType } from "../../types";
 
@@ -7,6 +8,7 @@ interface HeaderProps {
   isSmall: boolean;
   studyType: StudyType;
   setStudyType: (s: StudyType) => void;
+  onOpenAuth: () => void;
 }
 
 const STUDY_TYPES: { id: StudyType; label: string }[] = [
@@ -52,7 +54,7 @@ function FxPair({ label, val, chg, isSmall }: { label: string; val: number; chg:
   );
 }
 
-export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType }: HeaderProps) {
+export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType, onOpenAuth }: HeaderProps) {
   const allPairs = [
     { label: "GBP/JPY", val: fx.GBP, chg: +0.3 },
     { label: "USD/JPY", val: fx.USD, chg: -0.8 },
@@ -100,7 +102,33 @@ export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType }: He
     </div>
   );
 
-  // 縦長・小画面: 上段(メニュー+留学タイプ) / 下段(為替4通貨を2x2グリッド)の2段レイアウト
+  const authArea = (
+    <>
+      <SignedOut>
+        <button
+          onClick={onOpenAuth}
+          style={{
+            padding: "6px 14px",
+            borderRadius: 6,
+            border: "1.5px solid #2f63e6",
+            background: "#fff",
+            color: "#2f63e6",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          ログイン
+        </button>
+      </SignedOut>
+      <SignedIn>
+        <UserButton afterSignOutUrl="/" />
+      </SignedIn>
+    </>
+  );
+
+  // 縦長・小画面: 上段(メニュー+留学タイプ+認証) / 下段(為替4通貨を2x2グリッド)の2段レイアウト
   if (isSmall) {
     return (
       <div
@@ -111,9 +139,10 @@ export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType }: He
           padding: "8px 16px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8 }}>
           {menuButton}
           {studyToggle}
+          {authArea}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", rowGap: 8, columnGap: 12 }}>
           {allPairs.map((p) => (
@@ -146,7 +175,10 @@ export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType }: He
         ))}
       </div>
 
-      {studyToggle}
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        {studyToggle}
+        {authArea}
+      </div>
     </div>
   );
 }

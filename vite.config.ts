@@ -35,5 +35,11 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react(), fxDevProxyPlugin(env)],
+    server: {
+      // `vercel dev` はランダムなポートを割り当ててそこにサーバーが立つのを待つため、
+      // process.env.PORT を尊重しないと "Failed to detect a server running on port ..." になる。
+      port: Number(process.env.PORT) || 5173,
+      strictPort: true,
+    },
   };
 });

@@ -11,6 +11,7 @@ import { TaskView } from "./components/views/TaskView";
 import { VisaView } from "./components/views/VisaView";
 import { ShareReportView } from "./components/views/ShareReportView";
 import { PremiumUpgradeModal } from "./components/PremiumUpgradeModal";
+import { AuthModal } from "./components/AuthModal";
 import type { CityTierKey, CountryId, StudyType, ViewId } from "./types";
 
 function LegalModal({ onAgree }: { onAgree: () => void }) {
@@ -85,6 +86,7 @@ export default function App() {
   const [cityTier, setCityTier] = useState<CityTierKey>("capital");
   const [isPremium, setIsPremium] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const w = useWindowWidth();
   const isSmall = w < 1024;
 
@@ -173,6 +175,7 @@ export default function App() {
           isSmall={isSmall}
           studyType={studyType}
           setStudyType={setStudyType}
+          onOpenAuth={() => setAuthModalOpen(true)}
         />
         <main style={{ flex: 1, overflow: "auto", background: "#f8faff" }}>
           {view === "sim" && (
@@ -222,6 +225,9 @@ export default function App() {
       {isPremium && premiumModalOpen && (
         <PremiumUpgradeModal onClose={() => setPremiumModalOpen(false)} />
       )}
+
+      {/* 認証モーダル（Clerk） */}
+      {authModalOpen && <AuthModal onClose={() => setAuthModalOpen(false)} />}
 
       {/* Vercel Analytics の計測タグ — ignore_analytics が true なら除外 */}
       <Analytics

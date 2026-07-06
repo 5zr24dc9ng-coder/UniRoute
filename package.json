@@ -10,10 +10,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.8",
+    "@clerk/localizations": "^4.12.0",
+    "@supabase/supabase-js": "^2.110.0",
     "@vercel/analytics": "^2.0.1",
     "lucide-react": "^0.400.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "svix": "^1.96.1"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
