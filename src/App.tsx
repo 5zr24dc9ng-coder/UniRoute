@@ -13,6 +13,7 @@ import { ComparisonView } from "./components/views/ComparisonView";
 import { TaskView } from "./components/views/TaskView";
 import { VisaView } from "./components/views/VisaView";
 import { ShareReportView } from "./components/views/ShareReportView";
+import { LegalPageView } from "./components/views/LegalPageView";
 import { PremiumUpgradeModal } from "./components/PremiumUpgradeModal";
 import type { CityTierKey, CountryId, StudyType, ViewId } from "./types";
 
@@ -208,6 +209,14 @@ export default function App() {
   // 家族への共有レポート（?share=1&...）: ログイン不要の閲覧専用ページ。全Hookの呼び出し後に判定する
   if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("share") === "1") {
     return <ShareReportView />;
+  }
+
+  // 規約類の独立ページ（?legal=terms|privacy|tokushoho）: フッターリンクやClerkの同意リンク先として使う実URL
+  if (typeof window !== "undefined") {
+    const legalParam = new URLSearchParams(window.location.search).get("legal");
+    if (legalParam === "terms" || legalParam === "privacy" || legalParam === "tokushoho") {
+      return <LegalPageView doc={legalParam} />;
+    }
   }
 
   if (!legalAgreed) {
