@@ -86,7 +86,6 @@ export default async function handler(req: any, res: any): Promise<void> {
   const primaryEmail = emailAddresses?.[0]?.email_address;
 
   if (!clerkUserId || !primaryEmail) {
-    console.error("🔍 DEBUG event.type:", event.type, "data keys:", Object.keys(event.data), "email_addresses:", JSON.stringify(emailAddresses));
     console.error("🚨 ペイロードに必要なデータが含まれていません");
     res.statusCode = 400;
     res.end(JSON.stringify({ error: "payload-missing-fields" }));
