@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
 import { SvgIcon } from "../ui/SvgIcon";
 import type { Fx, StudyType } from "../../types";
 
@@ -8,13 +8,6 @@ interface HeaderProps {
   isSmall: boolean;
   studyType: StudyType;
   setStudyType: (s: StudyType) => void;
-}
-
-// Clerkのホスト型Account Portal（accounts.uniroute-study.jp）へ遷移し、
-// 完了後は今いたページに戻ってくる
-function goToSignIn() {
-  const redirectUrl = encodeURIComponent(window.location.href);
-  window.location.href = `https://accounts.uniroute-study.jp/sign-in?redirect_url=${redirectUrl}`;
 }
 
 const STUDY_TYPES: { id: StudyType; label: string }[] = [
@@ -111,22 +104,23 @@ export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType }: He
   const authArea = (
     <>
       <SignedOut>
-        <button
-          onClick={goToSignIn}
-          style={{
-            padding: "6px 14px",
-            borderRadius: 6,
-            border: "1.5px solid #2f63e6",
-            background: "#fff",
-            color: "#2f63e6",
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          ログイン
-        </button>
+        <SignInButton mode="modal">
+          <button
+            style={{
+              padding: "6px 14px",
+              borderRadius: 6,
+              border: "1.5px solid #2f63e6",
+              background: "#fff",
+              color: "#2f63e6",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ログイン
+          </button>
+        </SignInButton>
       </SignedOut>
       <SignedIn>
         <UserButton afterSignOutUrl="/" />
