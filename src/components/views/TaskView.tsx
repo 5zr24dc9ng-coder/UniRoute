@@ -1,9 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useUser } from "@clerk/clerk-react";
 import { getTasksByCountryAndType, type TaskMaster } from "../../constants/tasks";
 import { COUNTRY_DATA } from "../../constants/countries";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
+import { useCloudColumn } from "../../hooks/useCloudColumn";
 import { DocumentChecklist } from "../DocumentChecklist";
 import type { CountryId, StudyType } from "../../types";
+
+interface TaskCloudState {
+  completedIds: string[];
+  departureDate: string;
+  customTasksMap: Record<string, TaskMaster[]>;
+  orderMap: Record<string, Record<string, string[]>>;
+}
 
 // ─── 型定義 ───────────────────────────────────────────────────────────────────
 interface TaskViewProps {
@@ -333,6 +342,34 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
     localStorage.setItem("uniroute_task_order", JSON.stringify(orderMap));
   }, [orderMap]);
 
+  // ログイン中ユーザーのタスク進捗をSupabaseと同期する（未ログイン時は何もしない）
+  const { user } = useUser();
+  const { cloudValue, loaded, saveCloudValue } = useCloudColumn<TaskCloudState>("task_state");
+  const appliedCloudForUserRef = useRef<string | null>(null);
+
+  // ログイン直後、クラウドに保存済みの進捗があれば一度だけ復元する
+  useEffect(() => {
+    if (!loaded || !user) return;
+    if (appliedCloudForUserRef.current === user.id) return;
+    if (cloudValue) {
+      setCompletedIds(new Set(cloudValue.completedIds));
+      setDepartureDate(cloudValue.departureDate);
+      setCustomTasksMap(cloudValue.customTasksMap);
+      setOrderMap(cloudValue.orderMap);
+    }
+    appliedCloudForUserRef.current = user.id;
+  }, [loaded, cloudValue, user]);
+
+  // 復元が済んだあとは、進捗が変わるたびにクラウドへ自動保存する（ログイン中のみ）
+  useEffect(() => {
+    if (!user || appliedCloudForUserRef.current !== user.id) return;
+    saveCloudValue({
+      completedIds: [...completedIds],
+      departureDate,
+      customTasksMap,
+      orderMap,
+    });
+  }, [completedIds, departureDate, customTasksMap, orderMap, user]);
 
   const countryName = COUNTRY_DATA[selectedCountry].name;
   const studyTypeLabel = { DEGREE: "正規留学", EXCHANGE: "交換留学", LANGUAGE: "語学留学" }[studyType];

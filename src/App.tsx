@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useUser } from "@clerk/clerk-react";
 import { Analytics } from "@vercel/analytics/react";
 import { useWindowWidth } from "./hooks/useWindowWidth";
 import { useLiveFx } from "./hooks/useLiveFx";
+import { useCloudColumn } from "./hooks/useCloudColumn";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
@@ -13,6 +15,13 @@ import { ShareReportView } from "./components/views/ShareReportView";
 import { PremiumUpgradeModal } from "./components/PremiumUpgradeModal";
 import { AuthModal } from "./components/AuthModal";
 import type { CityTierKey, CountryId, StudyType, ViewId } from "./types";
+
+interface SimulationCloudState {
+  country: CountryId;
+  studyType: StudyType;
+  duration: number;
+  cityTier: CityTierKey;
+}
 
 function LegalModal({ onAgree }: { onAgree: () => void }) {
   return (
@@ -90,6 +99,11 @@ export default function App() {
   const w = useWindowWidth();
   const isSmall = w < 1024;
 
+  // ログイン中ユーザーのシミュレーション設定をSupabaseと同期する（未ログイン時は何もしない）
+  const { user } = useUser();
+  const { cloudValue, loaded, saveCloudValue } = useCloudColumn<SimulationCloudState>("simulation_state");
+  const appliedCloudForUserRef = useRef<string | null>(null);
+
   // 初期化時 localStorage をチェック
   useEffect(() => {
     const agreed = localStorage.getItem("uniroute_legal_agreed");
@@ -142,6 +156,25 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("uniroute_cityTier", cityTier);
   }, [cityTier]);
+
+  // ログイン直後、クラウドに保存済みの設定があれば一度だけ復元する
+  useEffect(() => {
+    if (!loaded || !user) return;
+    if (appliedCloudForUserRef.current === user.id) return;
+    if (cloudValue) {
+      setCountry(cloudValue.country);
+      setStudyType(cloudValue.studyType);
+      setDuration(cloudValue.duration);
+      setCityTier(cloudValue.cityTier);
+    }
+    appliedCloudForUserRef.current = user.id;
+  }, [loaded, cloudValue, user]);
+
+  // 復元が済んだあとは、値が変わるたびにクラウドへ自動保存する（ログイン中のみ）
+  useEffect(() => {
+    if (!user || appliedCloudForUserRef.current !== user.id) return;
+    saveCloudValue({ country, studyType, duration, cityTier });
+  }, [country, studyType, duration, cityTier, user]);
 
   const handleLegalAgree = () => {
     localStorage.setItem("uniroute_legal_agreed", "true");
