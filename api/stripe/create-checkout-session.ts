@@ -35,18 +35,12 @@ export default async function handler(req: any, res: any): Promise<void> {
     return;
   }
 
+  // verifyTokenは検証成功時にペイロードを直接返し、失敗時は例外を投げる
   let verified;
   try {
-    const result = await verifyToken(token, { secretKey: clerkSecretKey });
-    console.log("🔍 DEBUG verify result:", JSON.stringify(result));
-    if (result.errors || !result.data) {
-      res.statusCode = 401;
-      res.end(JSON.stringify({ error: "invalid-session", detail: JSON.stringify(result.errors) }));
-      return;
-    }
-    verified = result.data;
+    verified = await verifyToken(token, { secretKey: clerkSecretKey });
   } catch (err) {
-    console.error("🚨 セッション検証で例外:", err);
+    console.error("🚨 セッション検証エラー:", err);
     res.statusCode = 401;
     res.end(JSON.stringify({ error: "invalid-session", detail: err instanceof Error ? err.message : String(err) }));
     return;
