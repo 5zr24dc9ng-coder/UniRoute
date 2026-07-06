@@ -96,7 +96,7 @@ export default async function handler(req: any, res: any): Promise<void> {
   try {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const { error } = await supabase.from("users").insert({
-      clerk_user_id: clerkUserId,
+      id: clerkUserId,
       email: primaryEmail,
     });
 
