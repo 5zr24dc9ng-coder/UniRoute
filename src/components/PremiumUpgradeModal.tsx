@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@clerk/clerk-react";
 import { useWindowWidth } from "../hooks/useWindowWidth";
 
 interface PremiumUpgradeModalProps {
@@ -285,13 +286,36 @@ const DEMO_MAP: Record<FeatureKey, () => JSX.Element> = {
 
 export function PremiumUpgradeModal({ onClose }: PremiumUpgradeModalProps) {
   const [activeFeature, setActiveFeature] = useState<FeatureKey | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const isSmall = useWindowWidth() < 1024;
+  const { getToken } = useAuth();
 
   // クリックは常に「選択」であり、トグル（開いている時に閉じる）にはしない。
   // PCではクリック前に必ずhoverが発生するため、トグルにすると
   // 「hoverで開く→クリックした瞬間に閉じる」という誤動作になる。
   function selectFeature(key: FeatureKey) {
     setActiveFeature(key);
+  }
+
+  async function handlePurchase() {
+    setCheckoutLoading(true);
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("決済ページの作成に失敗しました。時間をおいて再度お試しください。");
+        setCheckoutLoading(false);
+      }
+    } catch {
+      alert("決済ページの作成に失敗しました。時間をおいて再度お試しください。");
+      setCheckoutLoading(false);
+    }
   }
 
   const ActiveDemo = activeFeature ? DEMO_MAP[activeFeature] : null;
@@ -403,14 +427,18 @@ export function PremiumUpgradeModal({ onClose }: PremiumUpgradeModalProps) {
                 <span style={{ fontSize: 11, color: "#5e6b86", marginLeft: 6 }}>買い切り・サブスクなし</span>
               </div>
               <button
+                onClick={handlePurchase}
+                disabled={checkoutLoading}
                 style={{
                   padding: "10px 22px", borderRadius: 9, border: "none",
                   background: "linear-gradient(135deg, #2f63e6, #4338ca)",
-                  color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  color: "#fff", fontSize: 13, fontWeight: 700,
+                  cursor: checkoutLoading ? "default" : "pointer",
+                  opacity: checkoutLoading ? 0.7 : 1,
                   boxShadow: "0 8px 20px rgba(67,56,202,.35)",
                 }}
               >
-                プレミアムを購入
+                {checkoutLoading ? "処理中..." : "プレミアムを購入"}
               </button>
             </div>
           </div>
