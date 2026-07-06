@@ -19,8 +19,11 @@ const clerkAppearance = {
     fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
   },
   elements: {
-    card: { boxShadow: "none", padding: 0 },
+    card: { boxShadow: "none", padding: 0, backgroundColor: "transparent" },
+    cardBox: { boxShadow: "none", backgroundColor: "transparent" },
     rootBox: { width: "100%" },
+    // 自作モーダル側に「ログイン/新規登録」タブがあるため、Clerkのデフォルト見出しは冗長なので非表示
+    header: { display: "none" },
     formFieldLabel: { color: "#1c2740", fontWeight: 600 },
     formButtonPrimary: {
       backgroundColor: "#2f63e6",
