@@ -260,6 +260,7 @@ interface SimulationViewProps {
   setCityTier: (t: CityTierKey) => void;
   lastUpdated?: Date | null;
   isPremium: boolean;
+  onUpgradeClick: () => void;
 }
 
 export function SimulationView({
@@ -275,6 +276,7 @@ export function SimulationView({
   setCityTier,
   lastUpdated,
   isPremium,
+  onUpgradeClick,
 }: SimulationViewProps) {
   const isSM = useWindowWidth() < 1024;
   const c = COUNTRY_DATA[country];
@@ -1053,10 +1055,10 @@ export function SimulationView({
           </div>
 
           {/* 資金ギャップ分析（premium） */}
-          <FundGapAnalysis targetAmountJpy={finalTotalJpy} isPremium={isPremium} />
+          <FundGapAnalysis targetAmountJpy={finalTotalJpy} isPremium={isPremium} onUpgradeClick={onUpgradeClick} />
 
           {/* 奨学金オフセット計算（premium） */}
-          <ScholarshipOffset targetAmountJpy={finalTotalJpy} durationMonths={duration} isPremium={isPremium} />
+          <ScholarshipOffset targetAmountJpy={finalTotalJpy} durationMonths={duration} isPremium={isPremium} onUpgradeClick={onUpgradeClick} />
 
           {/* Risk indicators — grid breakpoints via CSS (.sim-risk-grid in index.css) */}
           <div className="sim-risk-grid">

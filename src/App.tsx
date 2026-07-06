@@ -248,11 +248,19 @@ export default function App() {
               setCityTier={setCityTier}
               lastUpdated={lastUpdated}
               isPremium={premiumUnlocked}
+              onUpgradeClick={() => setPremiumModalOpen(true)}
             />
           )}
           {view === "matrix" && <ComparisonView fx={fx} studyType={studyType} />}
-          {view === "tasks" && <TaskView country={country} studyType={studyType} isPremium={premiumUnlocked} />}
-          {view === "visa" && <VisaView isPremium={premiumUnlocked} />}
+          {view === "tasks" && (
+            <TaskView
+              country={country}
+              studyType={studyType}
+              isPremium={premiumUnlocked}
+              onUpgradeClick={() => setPremiumModalOpen(true)}
+            />
+          )}
+          {view === "visa" && <VisaView isPremium={premiumUnlocked} onUpgradeClick={() => setPremiumModalOpen(true)} />}
         </main>
         <Footer isSmall={isSmall} />
       </div>
@@ -278,7 +286,7 @@ export default function App() {
           🔧 プレミアムモーダル（開発用プレビュー）
         </button>
       )}
-      {isPremium && premiumModalOpen && (
+      {premiumModalOpen && (
         <PremiumUpgradeModal onClose={() => setPremiumModalOpen(false)} />
       )}
 

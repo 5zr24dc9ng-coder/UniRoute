@@ -6,15 +6,17 @@ interface ScholarshipOffsetProps {
   /** 留学期間（月） */
   durationMonths: number;
   isPremium: boolean;
+  onUpgradeClick: () => void;
 }
 
 function fmtYen(n: number): string {
   return Math.round(n).toLocaleString("ja-JP");
 }
 
-function PremiumLockBanner({ text }: { text: string }) {
+function PremiumLockBanner({ text, onClick }: { text: string; onClick: () => void }) {
   return (
     <div
+      onClick={onClick}
       style={{
         border: "1.5px dashed #a5b4fc",
         borderRadius: 12,
@@ -23,6 +25,7 @@ function PremiumLockBanner({ text }: { text: string }) {
         display: "flex",
         alignItems: "center",
         gap: 10,
+        cursor: "pointer",
       }}
     >
       <span style={{ fontSize: 16 }}>🔒</span>
@@ -71,7 +74,7 @@ const PRESETS: Preset[] = [
   },
 ];
 
-export function ScholarshipOffset({ targetAmountJpy, durationMonths, isPremium }: ScholarshipOffsetProps) {
+export function ScholarshipOffset({ targetAmountJpy, durationMonths, isPremium, onUpgradeClick }: ScholarshipOffsetProps) {
   const [monthlyAmount, setMonthlyAmount] = useState<number>(() => {
     const raw = localStorage.getItem("uniroute_scholarship_monthly_jpy");
     const n = raw ? Number(raw) : 0;
@@ -158,7 +161,7 @@ export function ScholarshipOffset({ targetAmountJpy, durationMonths, isPremium }
 
       <div style={{ padding: "20px 24px" }}>
         {!isPremium ? (
-          <PremiumLockBanner text="奨学金額を差し引いた実質負担額の表示はプレミアムプランで利用できます" />
+          <PremiumLockBanner text="奨学金額を差し引いた実質負担額の表示はプレミアムプランで利用できます" onClick={onUpgradeClick} />
         ) : (
           <>
             {/* ── プリセット ── */}

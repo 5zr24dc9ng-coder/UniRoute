@@ -4,6 +4,7 @@ interface FundGapAnalysisProps {
   /** シミュレーションの推定総額（円） */
   targetAmountJpy: number;
   isPremium: boolean;
+  onUpgradeClick: () => void;
 }
 
 function fmtYen(n: number): string {
@@ -14,9 +15,10 @@ function formatDateJp(date: Date): string {
   return date.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" });
 }
 
-function PremiumLockBanner({ text }: { text: string }) {
+function PremiumLockBanner({ text, onClick }: { text: string; onClick: () => void }) {
   return (
     <div
+      onClick={onClick}
       style={{
         border: "1.5px dashed #a5b4fc",
         borderRadius: 12,
@@ -25,6 +27,7 @@ function PremiumLockBanner({ text }: { text: string }) {
         display: "flex",
         alignItems: "center",
         gap: 10,
+        cursor: "pointer",
       }}
     >
       <span style={{ fontSize: 16 }}>🔒</span>
@@ -50,7 +53,7 @@ function monthsUntil(departureDateStr: string): number | null {
   return Math.max(1, Math.ceil(diffDays / 30.44));
 }
 
-export function FundGapAnalysis({ targetAmountJpy, isPremium }: FundGapAnalysisProps) {
+export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: FundGapAnalysisProps) {
   const [currentSavings, setCurrentSavings] = useState<number>(() => {
     const raw = localStorage.getItem("uniroute_current_savings_jpy");
     const n = raw ? Number(raw) : 0;
@@ -151,7 +154,7 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium }: FundGapAnalysisP
 
       <div style={{ padding: "20px 24px" }}>
         {!isPremium ? (
-          <PremiumLockBanner text="現在の所持金から逆算した貯蓄プランの表示はプレミアムプランで利用できます" />
+          <PremiumLockBanner text="現在の所持金から逆算した貯蓄プランの表示はプレミアムプランで利用できます" onClick={onUpgradeClick} />
         ) : (
           <>
             {/* ── 入力エリア ── */}

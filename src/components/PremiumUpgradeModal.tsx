@@ -443,31 +443,58 @@ export function PremiumUpgradeModal({ onClose }: PremiumUpgradeModalProps) {
             </div>
           </div>
 
-          {/* 右: プレビューパネル */}
-          <div
-            style={{
-              width: isSmall ? "100%" : 290, flexShrink: 0,
-              background: "#f8faff", borderLeft: isSmall ? "none" : "1px solid #e3e9f5",
-              borderTop: isSmall ? "1px solid #e3e9f5" : "none",
-              padding: 22, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center",
-              minHeight: isSmall ? "auto" : 320,
-            }}
-          >
-            {ActiveDemo ? (
-              <ActiveDemo key={activeFeature} />
-            ) : (
-              <div>
-                <div style={{ width: 40, height: 40, borderRadius: "50%", border: "2px dashed #c7d0e6", margin: "0 auto 12px" }} />
-                <p style={{ fontSize: 12, color: "#8899bb", lineHeight: 1.6, margin: 0 }}>
-                  機能名にカーソルを合わせると
-                  <br />
-                  プレビューが表示されます
-                </p>
-              </div>
-            )}
-          </div>
+          {/* 右: プレビューパネル（デスクトップはインライン表示） */}
+          {!isSmall && (
+            <div
+              style={{
+                width: 290, flexShrink: 0,
+                background: "#f8faff", borderLeft: "1px solid #e3e9f5",
+                padding: 22, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center",
+                minHeight: 320,
+              }}
+            >
+              {ActiveDemo ? (
+                <ActiveDemo key={activeFeature} />
+              ) : (
+                <div>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", border: "2px dashed #c7d0e6", margin: "0 auto 12px" }} />
+                  <p style={{ fontSize: 12, color: "#8899bb", lineHeight: 1.6, margin: 0 }}>
+                    機能名にカーソルを合わせると
+                    <br />
+                    プレビューが表示されます
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* モバイルはスクロールせずに見えるよう、選択中のプレビューをポップアップで表示 */}
+      {isSmall && ActiveDemo && (
+        <div
+          className="pum-popin"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed", left: 16, right: 16, bottom: 16, zIndex: 10001,
+            background: "#f8faff", borderRadius: 16, border: "1px solid #e3e9f5",
+            boxShadow: "0 12px 32px rgba(10,15,30,.3)",
+            padding: "20px 22px", textAlign: "center",
+          }}
+        >
+          <button
+            onClick={() => setActiveFeature(null)}
+            style={{
+              position: "absolute", top: 10, right: 10, width: 24, height: 24, borderRadius: 7,
+              background: "#fff", border: "1px solid #e3e9f5", color: "#5e6b86",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
+          <ActiveDemo key={activeFeature} />
+        </div>
+      )}
     </div>
   );
 }

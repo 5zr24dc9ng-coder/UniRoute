@@ -10,11 +10,13 @@ interface DocumentChecklistProps {
   country: CountryId;
   studyType: StudyType;
   isPremium: boolean;
+  onUpgradeClick: () => void;
 }
 
-function PremiumLockBanner() {
+function PremiumLockBanner({ onClick }: { onClick: () => void }) {
   return (
     <div
+      onClick={onClick}
       style={{
         border: "1.5px dashed #a5b4fc",
         borderRadius: 12,
@@ -23,6 +25,7 @@ function PremiumLockBanner() {
         display: "flex",
         alignItems: "center",
         gap: 10,
+        cursor: "pointer",
       }}
     >
       <span style={{ fontSize: 16 }}>🔒</span>
@@ -110,7 +113,7 @@ function DocumentRow({
   );
 }
 
-export function DocumentChecklist({ country, studyType, isPremium }: DocumentChecklistProps) {
+export function DocumentChecklist({ country, studyType, isPremium, onUpgradeClick }: DocumentChecklistProps) {
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => {
     try {
       const raw = localStorage.getItem("uniroute_completed_documents");
@@ -144,7 +147,7 @@ export function DocumentChecklist({ country, studyType, isPremium }: DocumentChe
   const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   if (!isPremium) {
-    return <PremiumLockBanner />;
+    return <PremiumLockBanner onClick={onUpgradeClick} />;
   }
 
   return (

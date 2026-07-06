@@ -19,6 +19,7 @@ interface TaskViewProps {
   country: CountryId;
   studyType: StudyType;
   isPremium: boolean;
+  onUpgradeClick: () => void;
 }
 
 // ─── ユーティリティ ─────────────────────────────────────────────────────────
@@ -255,9 +256,10 @@ function TaskCard({
 }
 
 // ─── プレミアムロックバナー ───────────────────────────────────────────────────
-function PremiumLockBanner() {
+function PremiumLockBanner({ onClick }: { onClick: () => void }) {
   return (
     <div
+      onClick={onClick}
       style={{
         border: "1.5px dashed #a5b4fc",
         borderRadius: 12,
@@ -266,6 +268,7 @@ function PremiumLockBanner() {
         display: "flex",
         alignItems: "center",
         gap: 10,
+        cursor: "pointer",
       }}
     >
       <span style={{ fontSize: 16 }}>🔒</span>
@@ -281,7 +284,7 @@ function PremiumLockBanner() {
 }
 
 // ─── メインコンポーネント ─────────────────────────────────────────────────────
-export function TaskView({ country: defaultCountry, studyType, isPremium }: TaskViewProps) {
+export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgradeClick }: TaskViewProps) {
   const isSM = useWindowWidth() < 1024;
   const [selectedCountry, setSelectedCountry] = useState<CountryId>(defaultCountry);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -598,7 +601,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
       </div>
 
       {activeTab === "documents" ? (
-        <DocumentChecklist country={selectedCountry} studyType={studyType} isPremium={isPremium} />
+        <DocumentChecklist country={selectedCountry} studyType={studyType} isPremium={isPremium} onUpgradeClick={onUpgradeClick} />
       ) : (
       <>
       {/* ─── 進捗バー ──────────────────────────────────────────────── */}
@@ -625,7 +628,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium }: Task
       {/* ─── プレミアム機能エリア ───────────────────────────────────── */}
       {!isPremium ? (
         <div style={{ marginBottom: 28 }}>
-          <PremiumLockBanner />
+          <PremiumLockBanner onClick={onUpgradeClick} />
         </div>
       ) : (
         <div style={{ marginBottom: 28, display: "flex", flexDirection: "column", gap: 16 }}>

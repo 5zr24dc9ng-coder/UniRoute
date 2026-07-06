@@ -164,9 +164,10 @@ function DeadlineBadge({ days, label }: { days: number; label: string }) {
   );
 }
 
-function PremiumLockBanner({ text }: { text: string }) {
+function PremiumLockBanner({ text, onClick }: { text: string; onClick: () => void }) {
   return (
     <div
+      onClick={onClick}
       style={{
         border: "1.5px dashed #a5b4fc",
         borderRadius: 12,
@@ -175,6 +176,7 @@ function PremiumLockBanner({ text }: { text: string }) {
         display: "flex",
         alignItems: "center",
         gap: 10,
+        cursor: "pointer",
       }}
     >
       <span style={{ fontSize: 16 }}>🔒</span>
@@ -223,9 +225,10 @@ function ToggleBtn({
 
 interface VisaViewProps {
   isPremium: boolean;
+  onUpgradeClick: () => void;
 }
 
-export function VisaView({ isPremium }: VisaViewProps) {
+export function VisaView({ isPremium, onUpgradeClick }: VisaViewProps) {
   const isSmall = useWindowWidth() < 1024;
 
   const [country, setCountry] = useState<CountryCodeVisa>("US");
@@ -736,7 +739,7 @@ export function VisaView({ isPremium }: VisaViewProps) {
 
         <div style={{ padding: "20px 24px" }}>
           {!isPremium ? (
-            <PremiumLockBanner text={SCHEDULE_HEADER[country].lockText} />
+            <PremiumLockBanner text={SCHEDULE_HEADER[country].lockText} onClick={onUpgradeClick} />
           ) : (
             <>
               {/* ── UK: 28日ルール ── */}
