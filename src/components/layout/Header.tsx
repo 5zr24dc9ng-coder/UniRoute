@@ -8,7 +8,13 @@ interface HeaderProps {
   isSmall: boolean;
   studyType: StudyType;
   setStudyType: (s: StudyType) => void;
-  onOpenAuth: () => void;
+}
+
+// Clerkのホスト型Account Portal（accounts.uniroute-study.jp）へ遷移し、
+// 完了後は今いたページに戻ってくる
+function goToSignIn() {
+  const redirectUrl = encodeURIComponent(window.location.href);
+  window.location.href = `https://accounts.uniroute-study.jp/sign-in?redirect_url=${redirectUrl}`;
 }
 
 const STUDY_TYPES: { id: StudyType; label: string }[] = [
@@ -54,7 +60,7 @@ function FxPair({ label, val, chg, isSmall }: { label: string; val: number; chg:
   );
 }
 
-export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType, onOpenAuth }: HeaderProps) {
+export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType }: HeaderProps) {
   const allPairs = [
     { label: "GBP/JPY", val: fx.GBP, chg: +0.3 },
     { label: "USD/JPY", val: fx.USD, chg: -0.8 },
@@ -106,7 +112,7 @@ export function Header({ fx, onMenuClick, isSmall, studyType, setStudyType, onOp
     <>
       <SignedOut>
         <button
-          onClick={onOpenAuth}
+          onClick={goToSignIn}
           style={{
             padding: "6px 14px",
             borderRadius: 6,

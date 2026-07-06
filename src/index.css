@@ -121,19 +121,3 @@ button {
     box-shadow: 0 0 0 4px #cce8dc;
   }
 }
-
-/* Clerk側の内部スタイルの優先度が高くappearance APIの指定が効かないため直接上書き */
-.cl-formFieldInput,
-.cl-otpCodeFieldInput {
-  box-shadow: 0 0 0 1.5px #c7d2e8 !important;
-}
-.cl-formFieldInput:focus,
-.cl-otpCodeFieldInput:focus {
-  box-shadow: 0 0 0 1.5px #2f63e6, 0 0 0 4px rgba(47, 99, 230, 0.15) !important;
-}
-.cl-socialButtonsBlockButton {
-  box-shadow: 0 0 0 1.5px #c7d2e8 !important;
-}
-.cl-dividerLine {
-  background-color: #c7d2e8 !important;
-}
