@@ -11,12 +11,25 @@ const clerkAppearance = {
   variables: {
     colorPrimary: "#2f63e6",
     colorText: "#1c2740",
+    colorTextSecondary: "#5e6b86",
+    colorBackground: "#ffffff",
+    colorInputBackground: "#ffffff",
+    colorInputText: "#1c2740",
     borderRadius: "10px",
     fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
   },
   elements: {
     card: { boxShadow: "none", padding: 0 },
     rootBox: { width: "100%" },
+    formFieldLabel: { color: "#1c2740", fontWeight: 600 },
+    formButtonPrimary: {
+      backgroundColor: "#2f63e6",
+      boxShadow: "none",
+      "&:hover": { backgroundColor: "#1f49b8" },
+    },
+    // formFieldInput/socialButtonsBlockButton/otpCodeFieldInput/dividerLineの枠線は
+    // Clerk側の内部スタイルが優先されこの指定が効かないため、index.cssで!important上書きしている
+    footerActionLink: { color: "#2f63e6", fontWeight: 600 },
   },
 };
 
