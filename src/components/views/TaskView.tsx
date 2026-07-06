@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useUser, SignUpButton } from "@clerk/clerk-react";
+import { useUser } from "@clerk/clerk-react";
 import { getTasksByCountryAndType, type TaskMaster } from "../../constants/tasks";
 import { COUNTRY_DATA } from "../../constants/countries";
 import { useWindowWidth } from "../../hooks/useWindowWidth";
 import { useCloudColumn } from "../../hooks/useCloudColumn";
 import { DocumentChecklist } from "../DocumentChecklist";
+import { SaveProgressModal } from "../SaveProgressModal";
 import type { CountryId, StudyType } from "../../types";
 
 interface TaskCloudState {
@@ -256,31 +257,30 @@ function TaskCard({
 }
 
 // ─── 進捗保存バッジ（未ログイン時のみ表示。常時表示・完了数に応じてトーンだけ変化） ───
-function SaveProgressBadge({ completedCount }: { completedCount: number }) {
+function SaveProgressBadge({ completedCount, onClick }: { completedCount: number; onClick: () => void }) {
   const isReady = completedCount >= 3;
   return (
-    <SignUpButton mode="modal">
-      <span
-        title={isReady ? "アカウントを作ると、この進捗が消えなくなります" : "この進捗は今の端末にしか保存されていません"}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 11,
-          fontWeight: isReady ? 700 : 500,
-          color: isReady ? "#2f63e6" : "#8899bb",
-          background: isReady ? "#eaf1ff" : "transparent",
-          border: `1px solid ${isReady ? "#c8d9fd" : "#e3e9f5"}`,
-          borderRadius: 999,
-          padding: "3px 10px",
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-          transition: "all 0.2s ease",
-        }}
-      >
-        {isReady ? "💾 進捗を保存する" : "未保存"}
-      </span>
-    </SignUpButton>
+    <span
+      onClick={onClick}
+      title={isReady ? "他の端末でも続きから再開できるようにする" : "この進捗は今の端末にのみ保存されています"}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        fontSize: 11,
+        fontWeight: isReady ? 700 : 500,
+        color: isReady ? "#2f63e6" : "#8899bb",
+        background: isReady ? "#eaf1ff" : "transparent",
+        border: `1px solid ${isReady ? "#c8d9fd" : "#e3e9f5"}`,
+        borderRadius: 999,
+        padding: "3px 10px",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        transition: "all 0.2s ease",
+      }}
+    >
+      {isReady ? "💾 他の端末でも使えるようにする" : "この端末のみ"}
+    </span>
   );
 }
 
@@ -344,6 +344,7 @@ export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgr
     catch { return {}; }
   });
 
+  const [saveProgressModalOpen, setSaveProgressModalOpen] = useState(false);
   const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -641,7 +642,12 @@ export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgr
             <span style={{ fontSize: 12, fontWeight: 700, color: completedCount === totalCount ? "#16a34a" : "#1c2740" }}>
               {completedCount} / {totalCount} 完了
             </span>
-            {!user && <SaveProgressBadge completedCount={completedCount} />}
+            {!user && (
+              <SaveProgressBadge
+                completedCount={completedCount}
+                onClick={() => setSaveProgressModalOpen(true)}
+              />
+            )}
           </div>
         </div>
         <div style={{ height: 6, background: "#e3e9f5", borderRadius: 3, overflow: "hidden" }}>
@@ -722,6 +728,11 @@ export function TaskView({ country: defaultCountry, studyType, isPremium, onUpgr
             </button>
           </div>
         </div>
+      )}
+
+      {/* 進捗保存の案内モーダル */}
+      {saveProgressModalOpen && (
+        <SaveProgressModal onClose={() => setSaveProgressModalOpen(false)} />
       )}
 
       {/* カスタムタスク追加モーダル */}
