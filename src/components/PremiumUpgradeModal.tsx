@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useClerk, useUser } from "@clerk/clerk-react";
 import { useWindowWidth } from "../hooks/useWindowWidth";
 
 interface PremiumUpgradeModalProps {
@@ -289,6 +289,8 @@ export function PremiumUpgradeModal({ onClose }: PremiumUpgradeModalProps) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const isSmall = useWindowWidth() < 1024;
   const { getToken } = useAuth();
+  const { isSignedIn } = useUser();
+  const { openSignIn } = useClerk();
 
   // クリックは常に「選択」であり、トグル（開いている時に閉じる）にはしない。
   // PCではクリック前に必ずhoverが発生するため、トグルにすると
@@ -298,6 +300,10 @@ export function PremiumUpgradeModal({ onClose }: PremiumUpgradeModalProps) {
   }
 
   async function handlePurchase() {
+    if (!isSignedIn) {
+      openSignIn();
+      return;
+    }
     setCheckoutLoading(true);
     try {
       const token = await getToken();
@@ -438,7 +444,7 @@ export function PremiumUpgradeModal({ onClose }: PremiumUpgradeModalProps) {
                   boxShadow: "0 8px 20px rgba(67,56,202,.35)",
                 }}
               >
-                {checkoutLoading ? "処理中..." : "プレミアムを購入"}
+                {checkoutLoading ? "処理中..." : isSignedIn ? "プレミアムを購入" : "ログインして購入"}
               </button>
             </div>
           </div>
