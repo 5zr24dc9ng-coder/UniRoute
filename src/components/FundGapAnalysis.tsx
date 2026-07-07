@@ -64,6 +64,12 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
     () => localStorage.getItem("uniroute_departure_date") ?? ""
   );
 
+  const [monthlySavingsCapacity, setMonthlySavingsCapacity] = useState<number>(() => {
+    const raw = localStorage.getItem("uniroute_monthly_savings_capacity_jpy");
+    const n = raw ? Number(raw) : 0;
+    return Number.isFinite(n) ? n : 0;
+  });
+
   useEffect(() => {
     localStorage.setItem("uniroute_current_savings_jpy", String(currentSavings));
   }, [currentSavings]);
@@ -71,6 +77,10 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
   useEffect(() => {
     if (departureDate) localStorage.setItem("uniroute_departure_date", departureDate);
   }, [departureDate]);
+
+  useEffect(() => {
+    localStorage.setItem("uniroute_monthly_savings_capacity_jpy", String(monthlySavingsCapacity));
+  }, [monthlySavingsCapacity]);
 
   const monthsRemaining = useMemo(() => monthsUntil(departureDate), [departureDate]);
 
@@ -85,6 +95,13 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
       ? Math.ceil(gap / monthsRemaining)
       : 0;
 
+  // ─── 入力した貯蓄ペースに基づく見込み残高 ───
+  const projectedBalance = monthsRemaining
+    ? currentSavings + monthlySavingsCapacity * monthsRemaining
+    : currentSavings;
+  const projectedDiff = projectedBalance - targetAmountJpy; // プラスなら浮く、マイナスなら不足
+  const hasSavingsPlan = monthlySavingsCapacity > 0 && !!monthsRemaining && monthsRemaining > 0;
+
   // ─── グラフ用データ：今日から出国日まで、線形に積み立てた場合の累計貯蓄額 ───
   const chartPoints = useMemo(() => {
     if (!monthsRemaining || monthsRemaining < 1 || isAchieved) return [];
@@ -95,6 +112,14 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
     return pts;
   }, [monthsRemaining, currentSavings, gap, isAchieved]);
 
+  // ─── グラフ用データ：入力した貯蓄ペースで積み立てた場合の累計残高 ───
+  const savingsChartPoints = hasSavingsPlan
+    ? Array.from({ length: (monthsRemaining ?? 0) + 1 }, (_, i) => ({
+        month: i,
+        value: currentSavings + monthlySavingsCapacity * i,
+      }))
+    : [];
+
   const chartW = 600;
   const chartH = 180;
   const padL = 8;
@@ -103,7 +128,12 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
   const padB = 28;
   const plotW = chartW - padL - padR;
   const plotH = chartH - padT - padB;
-  const maxVal = Math.max(targetAmountJpy, currentSavings, 1);
+  const maxVal = Math.max(
+    targetAmountJpy,
+    currentSavings,
+    hasSavingsPlan ? currentSavings + monthlySavingsCapacity * (monthsRemaining ?? 0) : 0,
+    1
+  );
 
   function xFor(i: number): number {
     if (!monthsRemaining) return padL;
@@ -114,6 +144,10 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
   }
 
   const pathD = chartPoints
+    .map((p, idx) => `${idx === 0 ? "M" : "L"} ${xFor(p.month).toFixed(1)} ${yFor(p.value).toFixed(1)}`)
+    .join(" ");
+
+  const savingsPathD = savingsChartPoints
     .map((p, idx) => `${idx === 0 ? "M" : "L"} ${xFor(p.month).toFixed(1)} ${yFor(p.value).toFixed(1)}`)
     .join(" ");
 
@@ -193,6 +227,29 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
                   style={dateInputStyle}
                 />
               </div>
+              <div>
+                <p style={{ fontSize: 11, color: "#8899bb", letterSpacing: "0.06em", margin: "0 0 8px" }}>
+                  毎月貯蓄に回せる金額（円）
+                </p>
+                <input
+                  type="number"
+                  min={0}
+                  step={5000}
+                  value={monthlySavingsCapacity || ""}
+                  onChange={(e) => setMonthlySavingsCapacity(Math.max(0, Number(e.target.value) || 0))}
+                  placeholder="例：30000"
+                  style={{
+                    border: "1.5px solid #c7d2fe",
+                    borderRadius: 8,
+                    padding: "6px 12px",
+                    fontSize: 14,
+                    fontFamily: '"IBM Plex Mono", monospace',
+                    color: "#1c2740",
+                    width: 160,
+                    outline: "none",
+                  }}
+                />
+              </div>
             </div>
 
             {/* ── 結果サマリー ── */}
@@ -248,6 +305,34 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
                   </p>
                 </div>
 
+                {/* ── 貯蓄ペースに基づく見込み ── */}
+                {hasSavingsPlan && (
+                  <div
+                    style={
+                      projectedDiff >= 0
+                        ? {
+                            background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10,
+                            padding: "16px 18px", textAlign: "center", marginBottom: 20,
+                          }
+                        : {
+                            background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10,
+                            padding: "16px 18px", textAlign: "center", marginBottom: 20,
+                          }
+                    }
+                  >
+                    <p
+                      style={{
+                        fontSize: 15, fontWeight: 700, margin: 0,
+                        color: projectedDiff >= 0 ? "#16a34a" : "#cf4a4a",
+                      }}
+                    >
+                      {projectedDiff >= 0
+                        ? `このペースなら出国日までに ¥${fmtYen(projectedDiff)} 浮く見込みです`
+                        : `このペースだと出国日までに ¥${fmtYen(-projectedDiff)} 不足する見込みです`}
+                    </p>
+                  </div>
+                )}
+
                 {/* ── 貯蓄プラン グラフ ── */}
                 {monthsRemaining !== null && monthsRemaining > 0 && chartPoints.length > 0 && (
                   <div>
@@ -268,6 +353,17 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
                       {/* 積立ライン */}
                       <path d={pathD} fill="none" stroke="#4f46e5" strokeWidth={2.5} strokeLinecap="round" />
 
+                      {/* 貯蓄ペースライン（入力がある場合のみ） */}
+                      {hasSavingsPlan && (
+                        <path
+                          d={savingsPathD}
+                          fill="none"
+                          stroke={projectedDiff >= 0 ? "#1f9268" : "#cf4a4a"}
+                          strokeWidth={2.5}
+                          strokeLinecap="round"
+                        />
+                      )}
+
                       {/* 開始点・終了点 */}
                       <circle cx={xFor(0)} cy={yFor(currentSavings)} r={4} fill="#4f46e5" />
                       <circle cx={xFor(monthsRemaining)} cy={yFor(targetAmountJpy)} r={4} fill="#4f46e5" />
@@ -280,6 +376,11 @@ export function FundGapAnalysis({ targetAmountJpy, isPremium, onUpgradeClick }: 
                         {formatDateJp(new Date(departureDate + "T00:00:00"))}
                       </text>
                     </svg>
+                    {hasSavingsPlan && (
+                      <p style={{ fontSize: 10, color: "#8899bb", margin: "6px 0 0" }}>
+                        ― 目標達成に必要な積立　― 入力した貯蓄ペース
+                      </p>
+                    )}
                   </div>
                 )}
 

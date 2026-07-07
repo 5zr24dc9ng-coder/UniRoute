@@ -8,6 +8,7 @@ import { RemittanceCostComparison } from "../RemittanceCostComparison";
 import { FundGapAnalysis } from "../FundGapAnalysis";
 import { ScholarshipOffset } from "../ScholarshipOffset";
 import { ScenarioComparisonTable } from "../ScenarioComparisonTable";
+import { b64EncodeUnicode } from "../../utils/base64";
 
 const simCardStyle: CSSProperties = {
   background: "#fff",
@@ -300,12 +301,14 @@ export function SimulationView({
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
+  const [shareSections, setShareSections] = useState({ total: true, breakdown: true, visa: true });
+  const [compareShareIds, setCompareShareIds] = useState<string[]>([]);
 
   useEffect(() => {
     localStorage.setItem("uniroute_sim_scenarios", JSON.stringify(scenarios));
   }, [scenarios]);
 
-  function buildShareUrl(): string {
+  function buildShareUrl(overrideCompareIds?: string[]): string {
     const params = new URLSearchParams();
     params.set("share", "1");
     params.set("country", country);
@@ -327,14 +330,53 @@ export function SimulationView({
     } catch {
       // localStorage が使えない環境では奨学金情報を省略して続行
     }
+    const chosenSections = Object.entries(shareSections)
+      .filter(([, enabled]) => enabled)
+      .map(([key]) => key);
+    params.set("sections", chosenSections.join(","));
+
+    const compareIds = overrideCompareIds ?? compareShareIds;
+    const selectedScenarios = scenarios.filter((s) => compareIds.includes(s.id));
+    if (selectedScenarios.length >= 2) {
+      const payload = selectedScenarios.map((s) => ({
+        name: s.name,
+        country: s.country,
+        studyType: s.studyType ?? "DEGREE",
+        duration: s.duration,
+        cityTier: s.cityTier,
+      }));
+      params.set("cmp", b64EncodeUnicode(JSON.stringify(payload)));
+    }
+
     return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
   }
 
   function openShareModal() {
-    setShareUrl(buildShareUrl());
+    setCompareShareIds([]);
+    setShareUrl(buildShareUrl([]));
     setShareCopied(false);
     setShareModalOpen(true);
   }
+
+  function toggleShareSection(key: keyof typeof shareSections) {
+    setShareSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function toggleCompareShareId(id: string) {
+    setCompareShareIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 5) return prev;
+      return [...prev, id];
+    });
+  }
+
+  // チェックボックスの変更に合わせて共有URLを再生成する
+  useEffect(() => {
+    if (shareModalOpen) {
+      setShareUrl(buildShareUrl());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareSections, compareShareIds]);
 
   async function copyShareUrl() {
     try {
@@ -545,6 +587,65 @@ export function SimulationView({
             <p style={{ fontSize: 12, color: "#5e6b86", margin: "0 0 16px", lineHeight: 1.6 }}>
               このリンクを開くと、今の設定内容が閲覧専用のレポートとして表示されます。ログインは不要です。開いたページから印刷・PDF保存もできるので、親御さんへの説明にそのまま使えます。
             </p>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#1c2740", marginBottom: 8 }}>PDFに含める項目</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {(
+                  [
+                    { key: "total", label: "総額" },
+                    { key: "breakdown", label: "内訳" },
+                    { key: "visa", label: "ビザ・資金証明" },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#5e6b86", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={shareSections[key]}
+                      onChange={() => toggleShareSection(key)}
+                      style={{ width: 14, height: 14, cursor: "pointer" }}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            {scenarios.length >= 2 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#1c2740", marginBottom: 8 }}>
+                  比較表に含めるシナリオ（最大5件）
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 160, overflow: "auto" }}>
+                  {scenarios.map((s) => {
+                    const checked = compareShareIds.includes(s.id);
+                    const disabled = !checked && compareShareIds.length >= 5;
+                    return (
+                      <label
+                        key={s.id}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 8, fontSize: 12.5,
+                          color: disabled ? "#c7d0e6" : "#5e6b86",
+                          cursor: disabled ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={() => toggleCompareShareId(s.id)}
+                          style={{ width: 14, height: 14, cursor: disabled ? "not-allowed" : "pointer" }}
+                        />
+                        {s.name}（{COUNTRY_DATA[s.country].name}・{STUDY_TYPE_LABEL[s.studyType ?? "DEGREE"]}・{s.duration}ヶ月）
+                      </label>
+                    );
+                  })}
+                </div>
+                {compareShareIds.length >= 5 && (
+                  <p style={{ fontSize: 10.5, color: "#a0aec0", margin: "6px 0 0" }}>
+                    最大5件まで選択できます
+                  </p>
+                )}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <input
                 type="text"
