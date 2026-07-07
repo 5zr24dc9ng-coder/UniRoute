@@ -16,10 +16,12 @@ export function useSupabase(): SupabaseClient | null {
     if (!session) return null;
 
     return createClient(supabaseUrl, supabaseAnonKey, {
+      // Clerk公式のSupabase向けThird-Party Auth統合（2025年4月〜の推奨方式）。
+      // 旧JWTテンプレート方式（{ template: "supabase" }）は非推奨のため使わない。
       // accessTokenはリクエストのたびに呼ばれるので、
       // トークンが期限切れでも自動的に新しいものが使われる
       accessToken: async () => {
-        return (await session.getToken({ template: "supabase" })) ?? null;
+        return (await session.getToken()) ?? null;
       },
     });
   }, [session]);
