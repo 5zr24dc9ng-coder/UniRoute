@@ -74,27 +74,55 @@ export default async function handler(req: any, res: any): Promise<void> {
     return;
   }
 
-  // user.created 以外は受領のみ返す（Clerkの自動リトライ爆撃を防ぐ）
-  if (event.type !== "user.created") {
+  // user.created / user.deleted 以外は受領のみ返す（Clerkの自動リトライ爆撃を防ぐ）
+  if (event.type !== "user.created" && event.type !== "user.deleted") {
     res.statusCode = 200;
     res.end(JSON.stringify({ received: true, ignored: event.type }));
     return;
   }
 
   const clerkUserId = event.data.id as string | undefined;
-  const emailAddresses = event.data.email_addresses as { email_address: string }[] | undefined;
-  const primaryEmail = emailAddresses?.[0]?.email_address;
 
-  if (!clerkUserId || !primaryEmail) {
-    console.error("🚨 ペイロードに必要なデータが含まれていません");
+  if (!clerkUserId) {
+    console.error("🚨 ペイロードにidが含まれていません");
     res.statusCode = 400;
     res.end(JSON.stringify({ error: "payload-missing-fields" }));
     return;
   }
 
-  // ── Supabaseへ登録 ──
   try {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // ── Clerk側でユーザーが削除された場合：Supabase側の行も削除 ──
+    // (これが無いと、同じメールアドレスで再登録した際に users_email_key の
+    //  一意制約違反でinsertが失敗し、そのユーザーは二度とクラウド同期が使えなくなる)
+    if (event.type === "user.deleted") {
+      const { error } = await supabase.from("users").delete().eq("id", clerkUserId);
+
+      if (error) {
+        console.error("🚨 DB Delete Error:", error);
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: "db-delete-failed", detail: error.message }));
+        return;
+      }
+
+      console.log("✅ Supabaseの行を削除しました:", clerkUserId);
+      res.statusCode = 200;
+      res.end(JSON.stringify({ received: true }));
+      return;
+    }
+
+    // ── ここから user.created：Supabaseへ新規登録 ──
+    const emailAddresses = event.data.email_addresses as { email_address: string }[] | undefined;
+    const primaryEmail = emailAddresses?.[0]?.email_address;
+
+    if (!primaryEmail) {
+      console.error("🚨 ペイロードにemailが含まれていません");
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: "payload-missing-fields" }));
+      return;
+    }
+
     const { error } = await supabase.from("users").insert({
       id: clerkUserId,
       email: primaryEmail,
