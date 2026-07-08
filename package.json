@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-visa-timing-pages.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate:seo": "node scripts/generate-visa-timing-pages.mjs"
   },
   "dependencies": {
     "@clerk/backend": "^3.10.0",

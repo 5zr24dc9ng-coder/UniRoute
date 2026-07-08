@@ -1,6 +1,10 @@
 node_modules
 dist
 dist-ssr
+
+# scripts/generate-visa-timing-pages.mjs が npm run build のたびに自動生成する
+# ページ。ソースはスクリプト側にあるので、生成物はコミットしない。
+public/visa-timing/
 *.local
 .DS_Store
 .env
