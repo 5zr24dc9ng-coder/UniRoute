@@ -876,7 +876,7 @@ export function SimulationView({
                     marginBottom: 10,
                   }}
                 >
-                  推定総額 · {duration} ヶ月 · {CITY_TIERS[cityTier].label}
+                  推定総額（送金手数料込み） · {duration} ヶ月 · {CITY_TIERS[cityTier].label}
                 </div>
                 <div
                   className="sim-total-cost"

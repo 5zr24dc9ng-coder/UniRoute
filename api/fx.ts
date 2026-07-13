@@ -7,18 +7,17 @@ export default async function handler(_req: unknown, res: any): Promise<void> {
   res.setHeader("content-type", "application/json");
 
   if (!apiKey) {
-    // 診断: 値は絶対に出さず、キー名の候補だけ返す（機密ではない）
+    // 診断情報（設定済み変数名・総数）はログにのみ残す。レスポンスには含めない
+    // (env変数名を外部に返すと攻撃者に環境構成のヒントを与えてしまうため)
     const matchingKeys = Object.keys(process.env).filter((k) =>
       /EXCHANGE|RATE|API/i.test(k)
     );
+    console.error("🚨 EXCHANGE_RATE_API_KEY未設定:", {
+      matchingKeys,
+      totalEnvCount: Object.keys(process.env).length,
+    });
     res.statusCode = 500;
-    res.end(
-      JSON.stringify({
-        result: "error",
-        "error-type": "server-key-missing",
-        _diag: { matchingKeys, totalEnvCount: Object.keys(process.env).length },
-      })
-    );
+    res.end(JSON.stringify({ result: "error", "error-type": "server-key-missing" }));
     return;
   }
 

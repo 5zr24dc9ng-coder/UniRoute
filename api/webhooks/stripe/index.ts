@@ -56,7 +56,7 @@ export default async function handler(req: any, res: any): Promise<void> {
   } catch (err) {
     console.error("🚨 署名検証エラー詳細:", err);
     res.statusCode = 400;
-    res.end(JSON.stringify({ error: "invalid-signature", detail: String(err) }));
+    res.end(JSON.stringify({ error: "invalid-signature" }));
     return;
   }
 
@@ -87,7 +87,7 @@ export default async function handler(req: any, res: any): Promise<void> {
     if (error) {
       console.error("🚨 DB Update Error:", error);
       res.statusCode = 500;
-      res.end(JSON.stringify({ error: "db-update-failed", detail: error.message }));
+      res.end(JSON.stringify({ error: "db-update-failed" }));
       return;
     }
 
@@ -97,6 +97,6 @@ export default async function handler(req: any, res: any): Promise<void> {
   } catch (err) {
     console.error("🚨 Webhook 予期せぬエラー:", err);
     res.statusCode = 500;
-    res.end(JSON.stringify({ error: "unexpected-error", detail: err instanceof Error ? err.message : String(err) }));
+    res.end(JSON.stringify({ error: "unexpected-error" }));
   }
 }

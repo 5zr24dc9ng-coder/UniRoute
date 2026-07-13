@@ -42,7 +42,7 @@ export default async function handler(req: any, res: any): Promise<void> {
   } catch (err) {
     console.error("🚨 セッション検証エラー:", err);
     res.statusCode = 401;
-    res.end(JSON.stringify({ error: "invalid-session", detail: err instanceof Error ? err.message : String(err) }));
+    res.end(JSON.stringify({ error: "invalid-session" }));
     return;
   }
 
@@ -75,6 +75,6 @@ export default async function handler(req: any, res: any): Promise<void> {
   } catch (err) {
     console.error("🚨 Checkout Session作成エラー:", err);
     res.statusCode = 500;
-    res.end(JSON.stringify({ error: "checkout-session-failed", detail: err instanceof Error ? err.message : String(err) }));
+    res.end(JSON.stringify({ error: "checkout-session-failed" }));
   }
 }

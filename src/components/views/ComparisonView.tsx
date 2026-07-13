@@ -31,7 +31,7 @@ type Row = SectionRow | DataRow;
 const ROWS: Row[] = [
   { type: "section", label: "費用（10ヶ月・首都圏）" },
   {
-    type: "data", label: "推定総費用", sub: "円換算",
+    type: "data", label: "推定総費用", sub: "円換算・送金手数料抜き",
     getValue: (id, fx, st) => {
       const c = calcCosts(id, DURATION, fx, "capital", st);
       return { display: `¥${c.totalJPY.toLocaleString()}`, raw: c.totalJPY };
@@ -513,7 +513,7 @@ export function ComparisonView({ fx, studyType }: ComparisonViewProps) {
               fontFamily: '"IBM Plex Mono", monospace', margin: "0 0 20px",
             }}
           >
-            推定総費用の内訳（円換算・{studyTypeLabel} {DURATION}ヶ月・首都圏）
+            推定総費用の内訳（円換算・送金手数料抜き・{studyTypeLabel} {DURATION}ヶ月・首都圏）
           </p>
 
           {(() => {
