@@ -62,8 +62,8 @@ const PRESETS: Preset[] = [
     id: "tobitate",
     label: "トビタテ！留学JAPAN（大学生等対象）",
     monthly: 120000,
-    lumpSum: 150000,
-    note: "月額6万/12万/16万円（家計基準・地域による）＋留学準備金15万〜25万円",
+    lumpSum: 510000,
+    note: "月額6万/12万/16万円（家計基準・地域による）＋留学準備金21万〜35万円（地域による）＋授業料支援30万円",
   },
   {
     id: "jasso-degree",
