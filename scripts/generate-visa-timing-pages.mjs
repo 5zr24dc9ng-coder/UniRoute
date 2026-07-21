@@ -133,3 +133,37 @@ for (const [slug, c] of Object.entries(COUNTRIES)) {
   writeFileSync(`public/visa-timing/${slug}.html`, renderPage(slug, c));
   console.log(`generated public/visa-timing/${slug}.html`);
 }
+
+// ── サイトマップ生成 ──────────────────────────────────────────
+// 検索エンジンに「このURL群が存在する」と伝えるためのファイル。
+// 実在するURL（本体1 + 国別SEOページ4）だけを列挙する。
+// ページを増やしたら（留学タイプ別・都市ティア別など）、ここにも追加すること。
+function renderSitemap() {
+  const today = new Date().toISOString().slice(0, 10);
+  const urls = [
+    { loc: `${SITE_URL}/`, priority: "1.0" },
+    ...Object.keys(COUNTRIES).map((slug) => ({
+      loc: `${SITE_URL}/visa-timing/${slug}`,
+      priority: "0.8",
+    })),
+  ];
+
+  const entries = urls
+    .map(
+      (u) => `  <url>
+    <loc>${u.loc}</loc>
+    <lastmod>${today}</lastmod>
+    <priority>${u.priority}</priority>
+  </url>`
+    )
+    .join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries}
+</urlset>
+`;
+}
+
+writeFileSync("public/sitemap.xml", renderSitemap());
+console.log("generated public/sitemap.xml");
