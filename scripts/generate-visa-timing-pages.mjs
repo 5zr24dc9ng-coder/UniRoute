@@ -59,8 +59,8 @@ const COUNTRIES = {
     proofOfFunds: 22895,
     proofRule:
       "就学許可2026 — 連邦規定により単身でCAD 22,895の生活資金証明が必要です（学費とは別）。",
-    approvalRate: 91,
-    processingDays: 10,
+    approvalRate: 41,
+    processingDays: 112,
   },
 };
 
