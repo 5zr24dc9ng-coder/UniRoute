@@ -86,3 +86,6 @@ GRANT UPDATE (simulation_state, task_state) ON public.users TO authenticated;
 - Node実行環境がTSファイルを直接importできないため、`COUNTRY_DATA`の必要項目はスクリプト内に**手動でコピー**している（意図的な妥協。`countries.ts`を変更したら、このスクリプト内の値も手動で合わせる必要がある点に注意）
 - `vercel.json`の`cleanUrls: true`で`/visa-timing/uk`形式のURLにしている
 - 生成物はgitignore対象（`public/visa-timing/`）、コミットしない
+- 同スクリプトは`public/sitemap.xml`も同時に自動生成する（本体1 + 国別SEOページ4の計5URLを列挙）。SEOページを増やしたらこのサイトマップ生成ロジックにもURLを追加すること。生成物はgitignore対象（`public/sitemap.xml`）、コミットしない
+- `public/robots.txt`（固定ファイル・コミット対象）で全ページのクロールを許可し、`Sitemap: https://uniroute-study.jp/sitemap.xml`を明示している
+- Google Search Console所有権確認用の`<meta name="google-site-verification" ...>`を`index.html`の`<head>`に設置済み（2026-07-21）
